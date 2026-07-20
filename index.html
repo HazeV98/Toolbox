@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="it" data-theme="system">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Toolbox</title>
+    
+    <!-- PWA Meta Tags -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#2563eb">
+    <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="assets/icon.svg">
+    
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/modern.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" />
+</head>
+<body>
+
+    <!-- SPLASH SCREEN DI CARICAMENTO -->
+    <div id="splash-overlay" class="splash-overlay">
+        <h1 style="color: var(--accent-color); font-size: 2.5rem; margin-bottom: 0;">Toolbox</h1>
+        <div class="loader"></div>
+    </div>
+
+    <!-- SCHERMATA LOGIN -->
+    <div id="auth-view" class="view hidden auth-container">
+        <div class="auth-box">
+            <div class="auth-brand">
+                <div class="brand-orb">
+                    <span class="material-symbols-outlined">widgets</span>
+                </div>
+                <div>
+                    <h2>Toolbox</h2>
+                </div>
+            </div>
+            <form id="login-form">
+                <div class="input-group" style="margin-bottom: 1rem;">
+                    <span class="material-symbols-outlined input-icon">mail</span>
+                    <input type="email" id="auth-email" placeholder="Email" required autocomplete="email">
+                </div>
+                <div class="input-group" style="margin-bottom: 0.5rem;">
+                    <span class="material-symbols-outlined input-icon">lock</span>
+                    <input type="password" id="auth-password" placeholder="Password" required autocomplete="current-password">
+                </div>
+                <button type="button" id="btn-reset-pwd" class="text-btn">Password dimenticata?</button>
+                <div class="auth-actions" style="margin-top: 1rem;">
+                    <button type="submit" id="btn-login" class="btn primary">Accedi</button>
+                    <button type="button" id="btn-register" class="btn secondary">Registrati</button>
+                </div>
+            </form>
+            <p id="auth-error" class="error-msg"></p>
+            <div class="divider"><span>OPPURE</span></div>
+            <button type="button" id="btn-google" class="btn google-btn">
+                <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" width="18">
+                Accedi con Google
+            </button>
+        </div>
+    </div>
+
+    <!-- APP SHELL -->
+    <div id="app-shell" class="hidden" style="display: flex; flex-direction: column; min-height: 100vh; width: 100%;">
+        <header class="app-header">
+            <button id="btn-back" class="icon-btn hidden" aria-label="Indietro">
+                <span class="material-symbols-outlined">arrow_back</span>
+            </button>
+            <h1 id="app-title" style="font-size: 1.4rem; flex: 1; margin-left: 0.5rem;">Toolbox</h1>
+            
+            <div style="display: flex; gap: 0.5rem;">
+                <button id="btn-admin" class="icon-btn hidden" aria-label="Pannello Admin" style="color: var(--accent-color);">
+                    <span class="material-symbols-outlined">shield_person</span>
+                </button>
+                
+                <button id="btn-install" class="icon-btn hidden" aria-label="Installa App" style="color: #10b981;">
+                    <span class="material-symbols-outlined">install_mobile</span>
+                </button>
+                
+                <button id="btn-settings" class="icon-btn" aria-label="Impostazioni">
+                    <span class="material-symbols-outlined">settings</span>
+                </button>
+            </div>
+        </header>
+
+        <main id="main-content">
+            <section id="view-home" class="grid-container view active">
+                <div class="module-card" data-module="list">
+                    <span class="material-symbols-outlined icon-large">list_alt</span>
+                    <p>Liste</p>
+                </div>
+                <div class="module-card" data-module="actv">
+                    <span class="material-symbols-outlined icon-large">directions_bus</span>
+                    <p>Orari Actv</p>
+                </div>
+                <div class="module-card" data-module="passwords">
+                    <span class="material-symbols-outlined icon-large">key</span>
+                    <p>Password</p>
+                </div>
+                <div class="module-card" data-module="notes">
+                    <span class="material-symbols-outlined icon-large">edit_document</span>
+                    <p>Note Segrete</p>
+                </div> 
+                <div class="module-card" data-module="links">
+                    <span class="material-symbols-outlined icon-large">bookmark</span>
+                    <p>Siti Utili</p>
+                </div>
+                <div class="module-card" data-module="contacts">
+                    <span class="material-symbols-outlined icon-large">call</span>
+                    <p>Numeri Utili</p>
+                </div>
+                <div class="module-card" data-module="sensors">
+                    <span class="material-symbols-outlined icon-large">sensors</span>
+                    <p>Strumenti</p>
+                </div>
+
+                <div class="module-card admin-only-card" data-module="admin" style="display: none;">
+                    <span class="material-symbols-outlined icon-large" style="color: #f59e0b;">lock</span>
+                    <p>Admin</p>
+                </div>
+            </section>
+
+            <section id="view-module" class="view hidden">
+                <div id="module-container"></div>
+            </section>
+        </main>
+    </div>
+
+    <!-- OVERLAY IMPOSTAZIONI -->
+    <div id="settings-overlay" class="modal-overlay hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 style="font-size: 1.3rem;">Impostazioni</h2>
+                <button id="btn-close-settings" class="icon-btn"><span class="material-symbols-outlined">close</span></button>
+            </div>
+            
+            <div class="settings-section">
+                <h3>Profilo</h3>
+                <p id="user-profile-email" class="profile-info">Caricamento...</p>
+                <button id="btn-logout" class="btn secondary outline" style="width: 100%; margin-top: 0.5rem;">Esci dall'account</button>
+            </div>
+
+            <div class="settings-section">
+                <h3>Tema</h3>
+                <select id="theme-selector" class="input-select">
+                    <option value="system">Sistema (Automatico)</option>
+                    <option value="light">Chiaro</option>
+                    <option value="dark">Scuro</option>
+                </select>
+            </div>
+
+            <div class="settings-section">
+                <h3>Sicurezza</h3>
+                <div class="input-group">
+                    <span class="material-symbols-outlined input-icon">lock</span>
+                    <input type="password" id="new-password" placeholder="Nuova password">
+                </div>
+                <button id="btn-change-pwd" class="btn primary" style="width: 100%; margin-top: 0.8rem;">Aggiorna Password</button>
+                <p id="pwd-msg" class="msg-feedback"></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- OVERLAY PANNELLO ADMIN (Gestione Utenti) -->
+    <div id="admin-overlay" class="modal-overlay hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 style="font-size: 1.3rem; display:flex; align-items:center; gap:0.5rem; color:var(--accent-color);">
+                    <span class="material-symbols-outlined">shield_person</span> Pannello Admin
+                </h2>
+                <button id="btn-close-admin" class="icon-btn"><span class="material-symbols-outlined">close</span></button>
+            </div>
+            
+            <div class="settings-section">
+                <h3>Gestione Utenti Registrati</h3>
+                <div id="admin-users-list" style="margin-top: 1rem;">
+                    <p style="text-align:center; color:var(--text-secondary);">Caricamento utenti...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="js/app.js"></script>
+    
+    <!-- Registrazione Service Worker per PWA -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./service-worker.js')
+                    .then(registration => {
+                        console.log('ServiceWorker registrato con successo: ', registration.scope);
+                    })
+                    .catch(error => {
+                        console.log('Registrazione ServiceWorker fallita: ', error);
+                    });
+            });
+        }
+    </script>
+</body>
+</html>
+

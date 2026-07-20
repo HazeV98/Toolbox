@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+    <!-- Sfondo scuro con bordi arrotondati stile app -->
+    <rect width="512" height="512" rx="120" fill="#1e293b"/>
+    
+    <!-- Faccia superiore -->
+    <path d="M256 140 L360 200 L256 260 L152 200 Z" fill="#60a5fa" opacity="0.95"/>
+    
+    <!-- Faccia sinistra -->
+    <path d="M152 200 L256 260 L256 372 L152 312 Z" fill="#2563eb" opacity="0.95"/>
+    
+    <!-- Faccia destra -->
+    <path d="M256 260 L360 200 L360 312 L256 372 Z" fill="#1d4ed8" opacity="0.95"/>
+    
+    <!-- Nucleo centrale luminoso -->
+    <circle cx="256" cy="256" r="30" fill="#ffffff" opacity="0.9"/>
+</svg>
+ 

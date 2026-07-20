@@ -1,0 +1,18 @@
+{
+  "name": "Toolbox",
+  "short_name": "Toolbox",
+  "description": "Una suite personale di strumenti e moduli utili.",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#f4f6f8",
+  "theme_color": "#2563eb",
+  "icons": [
+    {
+      "src": "assets/icon.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
+ 
