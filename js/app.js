@@ -1,5 +1,6 @@
 import { app, auth, googleProvider } from './firebase-init.js';
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signInWithPopup, sendPasswordResetEmail, signOut, onAuthStateChanged, updatePassword } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+// Aggiunto signInWithRedirect e getRedirectResult
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signInWithRedirect, getRedirectResult, sendPasswordResetEmail, signOut, onAuthStateChanged, updatePassword } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 import { getFirestore, doc, setDoc, getDoc, collection, getDocs, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
 // --- GESTIONE INSTALLAZIONE PWA ---
@@ -70,6 +71,13 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
+
+    // --- GESTIONE ERRORI REDIRECT GOOGLE ---
+    // Cattura eventuali errori di login che si sono verificati durante il redirect di Google
+    getRedirectResult(auth).catch((error) => {
+        console.error("Errore dopo redirect Google:", error);
+        showAuthMessage("Accesso con Google fallito o annullato.");
+    });
 
     // --- AUTENTICAZIONE E CHECK BLOCCO ---
     onAuthStateChanged(auth, async (user) => {
@@ -174,9 +182,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.getElementById('btn-google').addEventListener('click', async () => {
         try {
-            await signInWithPopup(auth, googleProvider);
+            // Sostituito signInWithPopup con signInWithRedirect (necessario per PWA su mobile)
+            await signInWithRedirect(auth, googleProvider);
         } catch (error) {
-            showAuthMessage("Errore con l'accesso Google.");
+            showAuthMessage("Errore con l'avvio dell'accesso Google.");
         }
     });
 
