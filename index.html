@@ -17,6 +17,9 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" />
+    
+    <!-- Lordicon Script -->
+    <script src="https://cdn.lordicon.com/lordicon.js"></script>
 </head>
 <body>
 
@@ -87,36 +90,86 @@
         <main id="main-content">
             <section id="view-home" class="grid-container view active">
                 <div class="module-card" data-module="list">
-                    <span class="material-symbols-outlined icon-large">list_alt</span>
+                    <!-- Rimosso icon-large per evitare conflitti CSS di shadow/grid, aggiunto styling in blocco centrato -->
+                    <lord-icon
+                        src="https://cdn.lordicon.com/wwcdwkaf.json"
+                        trigger="loop"
+                        delay="2000"
+                        colors="primary:#2563eb"
+                        style="width: 56px; height: 56px; display: block; margin: 0 auto 8px auto;">
+                    </lord-icon>
                     <p>Liste</p>
                 </div>
                 <div class="module-card" data-module="actv">
-                    <span class="material-symbols-outlined icon-large">directions_bus</span>
+                    <lord-icon
+                        src="https://cdn.lordicon.com/okqjaags.json"
+                        trigger="loop"
+                        delay="2000"
+                        colors="primary:#2563eb"
+                        style="width: 56px; height: 56px; display: block; margin: 0 auto 8px auto;">
+                    </lord-icon>
                     <p>Orari Actv</p>
                 </div>
                 <div class="module-card" data-module="passwords">
-                    <span class="material-symbols-outlined icon-large">key</span>
+                    <lord-icon
+                        src="https://cdn.lordicon.com/tewlfgbl.json"
+                        trigger="loop"
+                        delay="2000"
+                        state="in-reveal"
+                        colors="primary:#2563eb"
+                        style="width: 56px; height: 56px; display: block; margin: 0 auto 8px auto;">
+                    </lord-icon>
                     <p>Password</p>
                 </div>
                 <div class="module-card" data-module="notes">
-                    <span class="material-symbols-outlined icon-large">edit_document</span>
+                    <lord-icon
+                        src="https://cdn.lordicon.com/vhyuhmbl.json"
+                        trigger="loop"
+                        delay="2000"
+                        colors="primary:#2563eb"
+                        style="width: 56px; height: 56px; display: block; margin: 0 auto 8px auto;">
+                    </lord-icon>
                     <p>Note Segrete</p>
                 </div> 
                 <div class="module-card" data-module="links">
-                    <span class="material-symbols-outlined icon-large">bookmark</span>
+                    <lord-icon
+                        src="https://cdn.lordicon.com/ymjswsps.json"
+                        trigger="loop"
+                        delay="2000"
+                        colors="primary:#2563eb"
+                        style="width: 56px; height: 56px; display: block; margin: 0 auto 8px auto;">
+                    </lord-icon>
                     <p>Siti Utili</p>
                 </div>
                 <div class="module-card" data-module="contacts">
-                    <span class="material-symbols-outlined icon-large">call</span>
+                    <lord-icon
+                        src="https://cdn.lordicon.com/tftaqjwp.json"
+                        trigger="loop"
+                        delay="2000"
+                        colors="primary:#2563eb"
+                        style="width: 56px; height: 56px; display: block; margin: 0 auto 8px auto;">
+                    </lord-icon>
                     <p>Numeri Utili</p>
                 </div>
                 <div class="module-card" data-module="sensors">
-                    <span class="material-symbols-outlined icon-large">sensors</span>
+                    <lord-icon
+                        src="https://cdn.lordicon.com/mudwpdhy.json"
+                        trigger="loop"
+                        delay="2000"
+                        colors="primary:#2563eb"
+                        style="width: 56px; height: 56px; display: block; margin: 0 auto 8px auto;">
+                    </lord-icon>
                     <p>Strumenti</p>
                 </div>
 
                 <div class="module-card admin-only-card" data-module="admin" style="display: none;">
-                    <span class="material-symbols-outlined icon-large" style="color: #f59e0b;">lock</span>
+                    <lord-icon
+                        src="https://cdn.lordicon.com/asyunleq.json"
+                        trigger="loop"
+                        delay="2000"
+                        colors="primary:#f59e0b"
+                        style="width: 56px; height: 56px; display: block; margin: 0 auto 8px auto;">
+                    </lord-icon>
                     <p>Admin</p>
                 </div>
             </section>
@@ -199,4 +252,5 @@
     </script>
 </body>
 </html>
+
 
