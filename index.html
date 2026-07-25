@@ -51,11 +51,17 @@
                 </div>
                 <button type="button" id="btn-reset-pwd" class="text-btn">Password dimenticata?</button>
                 <div class="auth-actions" style="margin-top: 1rem;">
-                    <button type="submit" id="btn-login" class="btn primary">Accedi</button>
-                    <button type="button" id="btn-register" class="btn secondary">Registrati</button>
+                    <button type="submit" id="btn-login" class="btn primary" style="width: 100%;">Accedi</button>
                 </div>
             </form>
             <p id="auth-error" class="error-msg"></p>
+            
+            <div style="text-align: center; margin-top: 0.5rem;">
+                <p style="font-size: 0.9rem; color: var(--text-secondary);">
+                    Non hai un account? <button type="button" id="btn-open-register" class="text-btn" style="padding:0; margin:0; font-size: 0.9rem;">Registrati</button>
+                </p>
+            </div>
+
             <div class="divider"><span>OPPURE</span></div>
             <button type="button" id="btn-google" class="btn google-btn">
                 <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" width="18">
@@ -89,8 +95,21 @@
 
         <main id="main-content">
             <section id="view-home" class="grid-container view active">
+                
+                <!-- NUOVA CARD CALENDARIO (Posizionata come prima) -->
+                <div class="module-card" data-module="calendar">
+                    <lord-icon
+                        src="https://cdn.lordicon.com/uoljexdg.json"
+                        trigger="loop"
+                        delay="2000"
+                        state="in-reveal"
+                        colors="primary:#2563eb"
+                        style="width: 56px; height: 56px; display: block; margin: 0 auto 8px auto;">
+                    </lord-icon>
+                    <p>Calendario</p>
+                </div>
+
                 <div class="module-card" data-module="list">
-                    <!-- Rimosso icon-large per evitare conflitti CSS di shadow/grid, aggiunto styling in blocco centrato -->
                     <lord-icon
                         src="https://cdn.lordicon.com/wwcdwkaf.json"
                         trigger="loop"
@@ -181,6 +200,60 @@
         </main>
     </div>
 
+    <!-- OVERLAY REGISTRAZIONE -->
+    <div id="register-overlay" class="modal-overlay hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 style="font-size: 1.5rem; color: var(--accent-color);">Crea Account</h2>
+                <button id="btn-close-register" class="icon-btn"><span class="material-symbols-outlined">close</span></button>
+            </div>
+            <form id="register-form">
+                <div class="input-group" style="margin-bottom: 0.8rem;">
+                    <span class="material-symbols-outlined input-icon">person</span>
+                    <input type="text" id="reg-name" placeholder="Nome" required>
+                </div>
+                <div class="input-group" style="margin-bottom: 0.8rem;">
+                    <span class="material-symbols-outlined input-icon">person</span>
+                    <input type="text" id="reg-surname" placeholder="Cognome" required>
+                </div>
+                <div class="input-group" style="margin-bottom: 0.8rem;">
+                    <span class="material-symbols-outlined input-icon">mail</span>
+                    <input type="email" id="reg-email" placeholder="Email" required autocomplete="email">
+                </div>
+                <div class="input-group" style="margin-bottom: 0.8rem;">
+                    <span class="material-symbols-outlined input-icon">lock</span>
+                    <input type="password" id="reg-password" placeholder="Password (min 6 car.)" required autocomplete="new-password">
+                </div>
+                <div class="input-group" style="margin-bottom: 1.5rem;">
+                    <span class="material-symbols-outlined input-icon">lock</span>
+                    <input type="password" id="reg-password-confirm" placeholder="Conferma Password" required autocomplete="new-password">
+                </div>
+                <button type="submit" id="btn-submit-register" class="btn primary" style="width: 100%;">Registrati</button>
+            </form>
+            <p id="reg-error" class="error-msg" style="margin-top: 1rem;"></p>
+        </div>
+    </div>
+
+    <!-- OVERLAY COMPLETAMENTO PROFILO (Obbligatorio) -->
+    <div id="setup-profile-overlay" class="modal-overlay hidden" style="z-index: 2500;">
+        <div class="modal-content">
+            <h2 style="font-size: 1.5rem; color: var(--accent-color); margin-bottom: 0.5rem; text-align:center;">Completa il tuo profilo</h2>
+            <p style="text-align: center; color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 1.5rem;">Per continuare, abbiamo bisogno del tuo nome e cognome per le funzioni di condivisione.</p>
+            <form id="setup-profile-form">
+                <div class="input-group" style="margin-bottom: 1rem;">
+                    <span class="material-symbols-outlined input-icon">person</span>
+                    <input type="text" id="setup-name" placeholder="Nome" required>
+                </div>
+                <div class="input-group" style="margin-bottom: 1.5rem;">
+                    <span class="material-symbols-outlined input-icon">person</span>
+                    <input type="text" id="setup-surname" placeholder="Cognome" required>
+                </div>
+                <button type="submit" class="btn primary" style="width: 100%;">Salva e Continua</button>
+            </form>
+            <p id="setup-error" class="error-msg" style="margin-top: 1rem;"></p>
+        </div>
+    </div>
+
     <!-- OVERLAY IMPOSTAZIONI -->
     <div id="settings-overlay" class="modal-overlay hidden">
         <div class="modal-content">
@@ -191,7 +264,8 @@
             
             <div class="settings-section">
                 <h3>Profilo</h3>
-                <p id="user-profile-email" class="profile-info">Caricamento...</p>
+                <p id="user-profile-name" class="profile-info" style="margin-bottom: 0.2rem; font-size: 1.2rem; font-weight: 700;">Caricamento...</p>
+                <p id="user-profile-email" class="profile-info" style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 1rem;">Caricamento...</p>
                 <button id="btn-logout" class="btn secondary outline" style="width: 100%; margin-top: 0.5rem;">Esci dall'account</button>
             </div>
 
@@ -228,7 +302,8 @@
             
             <div class="settings-section">
                 <h3>Gestione Utenti Registrati</h3>
-                <div id="admin-users-list" style="margin-top: 1rem;">
+                <p style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 1rem;">Tocca un utente per visualizzarne l'email.</p>
+                <div id="admin-users-list">
                     <p style="text-align:center; color:var(--text-secondary);">Caricamento utenti...</p>
                 </div>
             </div>

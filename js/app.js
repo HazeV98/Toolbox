@@ -1,17 +1,12 @@
 import { app, auth, googleProvider } from './firebase-init.js';
-// Aggiunto signInWithRedirect e getRedirectResult
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signInWithRedirect, getRedirectResult, sendPasswordResetEmail, signOut, onAuthStateChanged, updatePassword } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 import { getFirestore, doc, setDoc, getDoc, collection, getDocs, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
 // --- GESTIONE INSTALLAZIONE PWA ---
 let deferredPrompt = null;
 window.addEventListener('beforeinstallprompt', (e) => {
-    // Evita che Chrome mostri il prompt automatico (vecchie versioni)
     e.preventDefault();
-    // Salva l'evento per poterlo attivare al click
     deferredPrompt = e;
-    
-    // Mostra il pulsante se il DOM è già caricato
     const btnInstall = document.getElementById('btn-install');
     if (btnInstall) {
         btnInstall.classList.remove('hidden');
@@ -19,13 +14,12 @@ window.addEventListener('beforeinstallprompt', (e) => {
 });
 
 window.addEventListener('appinstalled', () => {
-    // Nascondi il pulsante quando l'app viene installata con successo
     const btnInstall = document.getElementById('btn-install');
     if (btnInstall) btnInstall.classList.add('hidden');
     deferredPrompt = null;
 });
 
-// GESTIONE ADMIN
+// GESTIONE ADMIN E STATO GLOBALE
 export const ADMIN_UID = "07K6IzDZTWScoi8qhpmt6OU8mxf1"; 
 export let isAdmin = false;
 const db = getFirestore(app);
@@ -48,109 +42,142 @@ document.addEventListener('DOMContentLoaded', () => {
     // Modali
     const settingsOverlay = document.getElementById('settings-overlay');
     const adminOverlay = document.getElementById('admin-overlay');
+    const registerOverlay = document.getElementById('register-overlay');
+    const setupProfileOverlay = document.getElementById('setup-profile-overlay');
 
-    // Se l'evento PWA è scattato prima del caricamento del DOM, mostra subito il pulsante
     if (deferredPrompt && btnInstall) {
         btnInstall.classList.remove('hidden');
     }
 
-    // --- AZIONE CLICK INSTALLAZIONE PWA ---
     if (btnInstall) {
         btnInstall.addEventListener('click', async () => {
             if (deferredPrompt) {
-                // Mostra il prompt nativo di installazione
                 deferredPrompt.prompt();
-                // Attendi la risposta dell'utente
                 const { outcome } = await deferredPrompt.userChoice;
-                if (outcome === 'accepted') {
-                    console.log('App installata con successo');
-                }
-                // Il prompt può essere usato una sola volta
+                if (outcome === 'accepted') console.log('App installata');
                 deferredPrompt = null;
                 btnInstall.classList.add('hidden');
             }
         });
     }
 
-    // --- GESTIONE ERRORI REDIRECT GOOGLE ---
-    // Cattura eventuali errori di login che si sono verificati durante il redirect di Google
     getRedirectResult(auth).catch((error) => {
         console.error("Errore dopo redirect Google:", error);
         showAuthMessage("Accesso con Google fallito o annullato.");
     });
 
-    // --- AUTENTICAZIONE E CHECK BLOCCO ---
+    // --- AUTENTICAZIONE E CHECK DATI PROFILO ---
     onAuthStateChanged(auth, async (user) => {
         if (user) {
-            // L'utente esiste. Verifichiamo nel DB se è bloccato.
             const userRef = doc(db, 'users', user.uid);
-            
             try {
                 const docSnap = await getDoc(userRef);
+                const userData = docSnap.exists() ? docSnap.data() : {};
                 
-                // Se il documento esiste ed è bloccato
-                if (docSnap.exists() && docSnap.data().blocked === true) {
+                if (userData.blocked === true) {
                     await signOut(auth);
                     showAuthMessage("Il tuo account è stato bloccato dall'amministratore.", true);
                     hideSplashAndShow(authView);
                     return;
                 }
 
-                // Aggiorna data ultimo accesso sul DB
-                await setDoc(userRef, {
-                    email: user.email,
-                    lastLogin: Date.now()
-                }, { merge: true });
-
-                // Check privilegi Admin
-                isAdmin = (user.uid === ADMIN_UID);
-                
-                let profileText = user.email;
-                if (isAdmin) {
-                    profileText += ' <span style="color:var(--accent-color); font-weight:bold; font-size:0.8rem; margin-left:8px; border: 1px solid var(--accent-color); padding: 2px 6px; border-radius: 12px;">ADMIN</span>';
-                    btnAdmin.classList.remove('hidden');
-                    // Mostra la card del modulo Admin nella home
-                    document.querySelectorAll('.admin-only-card').forEach(el => el.style.display = 'flex');
+                // Controllo se mancano Nome e Cognome (vecchi utenti o Google login)
+                if (!userData.firstName || !userData.lastName) {
+                    // Mettiamo in pausa il flusso e chiediamo i dati
+                    splashOverlay.classList.add('hidden');
+                    openModal(setupProfileOverlay);
+                    
+                    // L'inizializzazione dell'app riprenderà dal form di setup
                 } else {
-                    btnAdmin.classList.add('hidden');
-                    // Nasconde la card del modulo Admin nella home
-                    document.querySelectorAll('.admin-only-card').forEach(el => el.style.display = 'none');
+                    // Dati completi, avvia l'app shell
+                    await initAppShell(user, userData, userRef);
                 }
-                
-                document.getElementById('user-profile-email').innerHTML = profileText;
-                
-                // Nasconde splash e mostra App
-                hideSplashAndShow(appShell);
 
             } catch (error) {
                 console.error("Errore controllo utente:", error);
-                // Permettiamo l'accesso in caso di errore DB temporaneo
                 hideSplashAndShow(appShell);
             }
-            
         } else {
-            // Utente non loggato
+            // Logout / Non loggato
             isAdmin = false;
             btnAdmin.classList.add('hidden');
-            // Nasconde la card del modulo Admin nella home
             document.querySelectorAll('.admin-only-card').forEach(el => el.style.display = 'none');
             hideSplashAndShow(authView);
         }
     });
 
+    // Funzione separata per inizializzare l'interfaccia quando siamo sicuri che i dati ci sono
+    async function initAppShell(user, userData, userRef) {
+        await setDoc(userRef, {
+            email: user.email,
+            lastLogin: Date.now()
+        }, { merge: true });
+
+        isAdmin = (user.uid === ADMIN_UID);
+        
+        // Popola il modale Impostazioni con Nome e Cognome
+        let fullName = `${userData.firstName} ${userData.lastName}`;
+        document.getElementById('user-profile-name').innerHTML = fullName;
+        
+        let profileEmailText = user.email;
+        if (isAdmin) {
+            profileEmailText += ' <span style="color:var(--accent-color); font-weight:bold; font-size:0.8rem; margin-left:8px; border: 1px solid var(--accent-color); padding: 2px 6px; border-radius: 12px;">ADMIN</span>';
+            btnAdmin.classList.remove('hidden');
+            document.querySelectorAll('.admin-only-card').forEach(el => el.style.display = 'flex');
+        } else {
+            btnAdmin.classList.add('hidden');
+            document.querySelectorAll('.admin-only-card').forEach(el => el.style.display = 'none');
+        }
+        
+        document.getElementById('user-profile-email').innerHTML = profileEmailText;
+        
+        hideSplashAndShow(appShell);
+    }
+
+    // GESTIONE SETUP PROFILO (Quando mancano Nome e Cognome)
+    document.getElementById('setup-profile-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const fname = document.getElementById('setup-name').value.trim();
+        const lname = document.getElementById('setup-surname').value.trim();
+        const errorEl = document.getElementById('setup-error');
+
+        if (!fname || !lname) {
+            errorEl.innerText = "Entrambi i campi sono obbligatori.";
+            return;
+        }
+
+        try {
+            const user = auth.currentUser;
+            const userRef = doc(db, 'users', user.uid);
+            await setDoc(userRef, {
+                firstName: fname,
+                lastName: lname,
+                email: user.email
+            }, { merge: true });
+            
+            closeModal(setupProfileOverlay);
+            
+            // Riprendi il caricamento
+            const updatedSnap = await getDoc(userRef);
+            await initAppShell(user, updatedSnap.data(), userRef);
+
+        } catch (error) {
+            errorEl.innerText = "Errore durante il salvataggio. Riprova.";
+        }
+    });
+
     function hideSplashAndShow(viewToShow) {
-        // Appare la vista richiesta
         appShell.classList.add('hidden');
         authView.classList.add('hidden');
         viewToShow.classList.remove('hidden');
         
-        // Fai svanire lo splash screen
         splashOverlay.classList.add('hidden');
         setTimeout(() => {
             splashOverlay.style.display = 'none';
-        }, 400); // Attende la fine della transizione CSS
+        }, 400); 
     }
 
+    // --- LOGICA LOGIN ---
     const emailInput = document.getElementById('auth-email');
     const pwdInput = document.getElementById('auth-password');
     const errorMsg = document.getElementById('auth-error');
@@ -170,19 +197,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    document.getElementById('btn-register').addEventListener('click', async () => {
-        if (!emailInput.value || !pwdInput.value) return showAuthMessage("Inserisci Email e Password.");
-        try {
-            await createUserWithEmailAndPassword(auth, emailInput.value, pwdInput.value);
-            showAuthMessage("Registrazione completata!", false);
-        } catch (error) {
-            showAuthMessage("Errore. L'email potrebbe essere già in uso o la password troppo debole.");
-        }
-    });
-
     document.getElementById('btn-google').addEventListener('click', async () => {
         try {
-            // Sostituito signInWithPopup con signInWithRedirect (necessario per PWA su mobile)
             await signInWithRedirect(auth, googleProvider);
         } catch (error) {
             showAuthMessage("Errore con l'avvio dell'accesso Google.");
@@ -199,7 +215,62 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    // --- LOGICA REGISTRAZIONE ---
+    document.getElementById('btn-open-register').addEventListener('click', () => {
+        document.getElementById('reg-error').innerText = '';
+        document.getElementById('register-form').reset();
+        openModal(registerOverlay);
+    });
 
+    document.getElementById('btn-close-register').addEventListener('click', () => {
+        closeModal(registerOverlay);
+    });
+
+    document.getElementById('register-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const fname = document.getElementById('reg-name').value.trim();
+        const lname = document.getElementById('reg-surname').value.trim();
+        const email = document.getElementById('reg-email').value.trim();
+        const pwd = document.getElementById('reg-password').value;
+        const pwdConfirm = document.getElementById('reg-password-confirm').value;
+        const errorEl = document.getElementById('reg-error');
+
+        if (pwd !== pwdConfirm) {
+            errorEl.innerText = "Le password non coincidono.";
+            return;
+        }
+
+        try {
+            errorEl.style.color = "var(--text-primary)";
+            errorEl.innerText = "Creazione account in corso...";
+            
+            const userCredential = await createUserWithEmailAndPassword(auth, email, pwd);
+            const user = userCredential.user;
+            
+            // Salviamo subito il nome e cognome così il check all'avvio lo troverà compilato
+            await setDoc(doc(db, 'users', user.uid), {
+                firstName: fname,
+                lastName: lname,
+                email: email,
+                lastLogin: Date.now(),
+                blocked: false
+            });
+
+            closeModal(registerOverlay);
+            showAuthMessage("Registrazione completata! Accesso in corso...", false);
+        } catch (error) {
+            errorEl.style.color = "#ef4444";
+            if (error.code === 'auth/email-already-in-use') {
+                errorEl.innerText = "Questa email è già in uso.";
+            } else if (error.code === 'auth/weak-password') {
+                errorEl.innerText = "La password deve avere almeno 6 caratteri.";
+            } else {
+                errorEl.innerText = "Errore durante la registrazione.";
+            }
+        }
+    });
+
+    // --- FUNZIONI MODALI GENERALI ---
     function openModal(overlay) {
         overlay.classList.remove('hidden');
         document.body.classList.add('modal-open');
@@ -214,13 +285,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.querySelectorAll('.modal-overlay').forEach((overlay) => {
         overlay.addEventListener('click', (e) => {
-            if (e.target === overlay) closeModal(overlay);
+            // Impedisce la chiusura cliccando fuori per il setup obbligatorio
+            if (e.target === overlay && overlay.id !== 'setup-profile-overlay') closeModal(overlay);
         });
     });
 
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
-            document.querySelectorAll('.modal-overlay:not(.hidden)').forEach(closeModal);
+            document.querySelectorAll('.modal-overlay:not(.hidden)').forEach(overlay => {
+                if(overlay.id !== 'setup-profile-overlay') closeModal(overlay);
+            });
         }
     });
 
@@ -238,7 +312,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.getElementById('btn-logout').addEventListener('click', async () => {
         closeModal(settingsOverlay);
-        // Riattiva lo splash
         splashOverlay.style.display = 'flex';
         setTimeout(() => splashOverlay.classList.remove('hidden'), 10);
         await signOut(auth);
@@ -275,7 +348,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function loadAdminUsers() {
         const container = document.getElementById('admin-users-list');
-        container.innerHTML = '<p style="text-align:center; color:var(--text-secondary);">Caricamento utenti...</p>';
+        container.innerHTML = '<div class="loader" style="margin: 2rem auto;"></div><p style="text-align:center; color:var(--text-secondary);">Caricamento utenti...</p>';
         
         try {
             const querySnapshot = await getDocs(collection(db, "users"));
@@ -292,8 +365,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 const date = new Date(userData.lastLogin).toLocaleString('it-IT');
                 const isBlocked = userData.blocked === true;
                 
+                // Preparazione Nome Visualizzato
+                let displayFullName = "Senza Nome";
+                if (userData.firstName && userData.lastName) {
+                    displayFullName = `${userData.firstName} ${userData.lastName}`;
+                }
+
                 const row = document.createElement('div');
                 row.className = 'user-row';
+                // Stile inline per trasformarlo in un contenitore cliccabile e flessibile
+                row.style.cursor = 'pointer';
+                row.style.display = 'flex';
+                row.style.flexDirection = 'column';
+                row.style.alignItems = 'stretch';
                 
                 let blockBtnHTML = '';
                 if (!isMe) {
@@ -301,26 +385,38 @@ document.addEventListener('DOMContentLoaded', () => {
                         ? `<button class="btn outline" style="padding: 0.4rem 0.8rem; font-size: 0.85rem;" data-uid="${docSnap.id}" data-action="unblock">Sblocca</button>`
                         : `<button class="btn danger outline" style="padding: 0.4rem 0.8rem; font-size: 0.85rem;" data-uid="${docSnap.id}" data-action="block">Blocca</button>`;
                 } else {
-                    blockBtnHTML = `<span style="font-size:0.8rem; color:var(--text-secondary);">Amministratore</span>`;
+                    blockBtnHTML = `<span style="font-size:0.8rem; color:var(--text-secondary);">Admin</span>`;
                 }
 
                 row.innerHTML = `
-                    <div class="user-info">
-                        <span class="user-email ${isBlocked ? 'error-msg' : ''}" style="text-align:left; margin:0;">${userData.email}</span>
-                        <span class="user-date">Ultimo accesso: ${date}</span>
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <div class="user-info">
+                            <span class="user-email ${isBlocked ? 'error-msg' : ''}" style="text-align:left; margin:0;">${displayFullName}</span>
+                            <span class="user-date">Ultimo accesso: ${date}</span>
+                        </div>
+                        <div>${blockBtnHTML}</div>
                     </div>
-                    <div>${blockBtnHTML}</div>
+                    <div class="user-email-reveal hidden" style="margin-top: 0.8rem; padding-top: 0.5rem; border-top: 1px dashed var(--border-soft); font-size: 0.85rem; color: var(--text-secondary);">
+                        <strong>Email:</strong> ${userData.email}
+                    </div>
                 `;
+
+                // Espansione al click per vedere la mail
+                row.addEventListener('click', () => {
+                    const emailReveal = row.querySelector('.user-email-reveal');
+                    emailReveal.classList.toggle('hidden');
+                });
 
                 if (!isMe) {
                     row.querySelector('button').addEventListener('click', async (e) => {
+                        e.stopPropagation(); // Evita di espandere/collassare la riga se si clicca il tasto blocca
                         const targetUid = e.target.dataset.uid;
                         const action = e.target.dataset.action;
                         const newStatus = action === 'block';
                         
                         try {
                             await updateDoc(doc(db, 'users', targetUid), { blocked: newStatus });
-                            loadAdminUsers(); // Ricarica la lista per aggiornare il bottone
+                            loadAdminUsers(); // Ricarica la lista
                         } catch (err) {
                             alert("Errore nell'aggiornamento dell'utente.");
                         }
@@ -332,7 +428,7 @@ document.addEventListener('DOMContentLoaded', () => {
             
         } catch (error) {
             console.error("Errore Admin DB:", error);
-            container.innerHTML = '<p style="color:red; text-align:center;">Errore di lettura dal database. Controlla le regole Firestore.</p>';
+            container.innerHTML = '<p style="color:red; text-align:center;">Errore di lettura dal database.</p>';
         }
     }
 
