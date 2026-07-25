@@ -220,7 +220,7 @@ function buildModalsToBody() {
                     <h2>Esporta in PDF</h2>
                     <button id="btn-close-export" class="icon-btn"><span class="material-symbols-outlined">close</span></button>
                 </div>
-                <p style="font-size:0.85rem; margin-bottom:1rem; color:var(--text-secondary);">Seleziona il mese. Verrà generato un documento orizzontale in tre colonne con tutti gli eventi visibili.</p>
+                <p style="font-size:0.85rem; margin-bottom:1rem; color:var(--text-secondary);">Seleziona il mese. Verrà generato un documento orizzontale in tre colonne con tutti i giorni e gli eventuali eventi visibili.</p>
                 <div class="input-group" style="margin-bottom: 1rem;">
                     <input type="month" id="export-month" class="input-select" style="width:100%; margin:0;">
                 </div>
@@ -1023,11 +1023,9 @@ function bindModalEvents() {
 
         let htmlContent = `
             <div id="pdf-export-wrap" style="padding: 20px; font-family: sans-serif; background: #fff; color: #000; box-sizing: border-box;">
-               <h1 style="text-align:center; color:#2563eb; margin-bottom: 20px; font-size: 24px;">Calendario Condiviso - ${monthNames[month]} ${year}</h1>
+               <h1 style="text-align:center; color:#2563eb; margin-bottom: 20px; font-size: 24px;">${monthNames[month]} ${year}</h1>
                <div style="column-count: 3; column-gap: 20px; font-size: 12px; width: 100%;">
         `;
-
-        let hasDataInMonth = false;
 
         for(let i=1; i<=daysInMonth; i++) {
             const dateStr = `${year}-${String(month+1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
@@ -1037,22 +1035,20 @@ function bindModalEvents() {
             let subText = dayInfo.santo;
             if(dayInfo.festa) subText += ` - <b>${dayInfo.festa}</b>`;
 
+            let dayHtml = `
+            <div style="break-inside: avoid; margin-bottom: 15px; border: 1px solid #e2e8f0; padding: 10px; border-radius: 8px; background: #f8fafc;">
+                <h3 style="margin:0 0 8px 0; border-bottom: 1px solid #cbd5e1; padding-bottom: 4px; font-size:14px; color:#1e293b;">
+                    ${i} ${monthNames[month]}
+                    <div style="font-size:10px; color:#64748b; font-weight:normal; margin-top:2px;">${subText}</div>
+                </h3>
+            `;
+
             if (dayEntries.length > 0) {
-                hasDataInMonth = true;
-                
                 dayEntries.sort((a,b) => {
                     if (!a.startTime) return -1;
                     if (!b.startTime) return 1;
                     return a.startTime.localeCompare(b.startTime);
                 });
-
-                let dayHtml = `
-                <div style="break-inside: avoid; margin-bottom: 15px; border: 1px solid #e2e8f0; padding: 10px; border-radius: 8px; background: #f8fafc;">
-                    <h3 style="margin:0 0 8px 0; border-bottom: 1px solid #cbd5e1; padding-bottom: 4px; font-size:14px; color:#1e293b;">
-                        ${i} ${monthNames[month]}
-                        <div style="font-size:10px; color:#64748b; font-weight:normal; margin-top:2px;">${subText}</div>
-                    </h3>
-                `;
 
                 dayEntries.forEach(entry => {
                     const userFilter = filters[entry.ownerUid];
@@ -1075,17 +1071,13 @@ function bindModalEvents() {
                         </div>
                     `;
                 });
-
-                dayHtml += `</div>`;
-                htmlContent += dayHtml;
             }
+
+            dayHtml += `</div>`;
+            htmlContent += dayHtml;
         }
 
         htmlContent += `</div></div>`;
-
-        if (!hasDataInMonth) {
-            return alert("Non ci sono eventi per questo mese!");
-        }
 
         const btn = document.getElementById('btn-do-export');
         const oldText = btn.innerText;
