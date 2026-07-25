@@ -220,7 +220,7 @@ function buildModalsToBody() {
                     <h2>Esporta in PDF</h2>
                     <button id="btn-close-export" class="icon-btn"><span class="material-symbols-outlined">close</span></button>
                 </div>
-                <p style="font-size:0.85rem; margin-bottom:1rem; color:var(--text-secondary);">Seleziona il mese. Verrà generato un documento orizzontale in tre colonne con tutti i giorni e gli eventuali eventi visibili.</p>
+                <p style="font-size:0.85rem; margin-bottom:1rem; color:var(--text-secondary);">Seleziona il mese. Verrà generato un documento orizzontale compatto su una singola pagina.</p>
                 <div class="input-group" style="margin-bottom: 1rem;">
                     <input type="month" id="export-month" class="input-select" style="width:100%; margin:0;">
                 </div>
@@ -1022,9 +1022,9 @@ function bindModalEvents() {
         const monthNames = ["Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno", "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre"];
 
         let htmlContent = `
-            <div id="pdf-export-wrap" style="padding: 20px; font-family: sans-serif; background: #fff; color: #000; box-sizing: border-box;">
-               <h1 style="text-align:center; color:#2563eb; margin-bottom: 20px; font-size: 24px;">${monthNames[month]} ${year}</h1>
-               <div style="column-count: 3; column-gap: 20px; font-size: 12px; width: 100%;">
+            <div id="pdf-export-wrap" style="padding: 10px; font-family: sans-serif; background: #fff; color: #000; box-sizing: border-box;">
+               <h1 style="text-align:center; color:#2563eb; margin-bottom: 10px; font-size: 18px; font-weight: bold;">${monthNames[month]} ${year}</h1>
+               <div style="column-count: 4; column-gap: 15px; font-size: 11px; width: 100%;">
         `;
 
         for(let i=1; i<=daysInMonth; i++) {
@@ -1036,11 +1036,11 @@ function bindModalEvents() {
             if(dayInfo.festa) subText += ` - <b>${dayInfo.festa}</b>`;
 
             let dayHtml = `
-            <div style="break-inside: avoid; margin-bottom: 15px; border: 1px solid #e2e8f0; padding: 10px; border-radius: 8px; background: #f8fafc;">
-                <h3 style="margin:0 0 8px 0; border-bottom: 1px solid #cbd5e1; padding-bottom: 4px; font-size:14px; color:#1e293b;">
-                    ${i} ${monthNames[month]}
-                    <div style="font-size:10px; color:#64748b; font-weight:normal; margin-top:2px;">${subText}</div>
-                </h3>
+            <div style="break-inside: avoid; margin-bottom: 8px;">
+                <div style="border-bottom: 1px solid #cbd5e1; margin-bottom: 4px; padding-bottom: 2px;">
+                    <span style="font-size:12px; font-weight:bold; color:#1e293b;">${i} ${monthNames[month]}</span>
+                    <span style="font-size:9px; color:#64748b; margin-left:5px;">${subText}</span>
+                </div>
             `;
 
             if (dayEntries.length > 0) {
@@ -1065,9 +1065,9 @@ function bindModalEvents() {
                     if (entry.isPrivate) color = '#ef4444';
 
                     dayHtml += `
-                        <div style="margin-bottom: 6px; border-left: 3px solid ${color}; padding-left: 6px;">
-                            <div style="font-weight:bold; font-size:12px; color:#0f172a;">${entry.title} <span style="font-size:10px; color:#64748b;">(${ownerName})</span></div>
-                            <div style="font-size:11px; color:#475569;">${timeStr}</div>
+                        <div style="margin-bottom: 3px; border-left: 2px solid ${color}; padding-left: 4px; line-height: 1.1;">
+                            <div style="font-weight:bold; font-size:10px; color:#0f172a;">${entry.title} <span style="font-size:8px; color:#64748b;">(${ownerName})</span></div>
+                            <div style="font-size:9px; color:#475569;">${timeStr}</div>
                         </div>
                     `;
                 });
@@ -1100,7 +1100,7 @@ function bindModalEvents() {
             element.innerHTML = htmlContent;
 
             const opt = {
-              margin:       10,
+              margin:       5,
               filename:     `Calendario_${monthNames[month]}_${year}.pdf`,
               image:        { type: 'jpeg', quality: 0.98 },
               html2canvas:  { scale: 2 },
