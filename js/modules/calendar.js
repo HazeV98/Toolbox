@@ -1026,7 +1026,7 @@ function bindModalEvents() {
 
         let htmlContent = `
             <div id="pdf-export-wrap" style="padding: 10px; font-family: sans-serif; background: #fff; color: #000; box-sizing: border-box; width: 100%;">
-               <h1 style="text-align:center; color:#2563eb; margin-bottom: 8px; font-size: 16px; font-weight: bold;">${monthNames[month]} ${year}</h1>
+               <h1 style="text-align:center; color:#2563eb; margin-bottom: 8px; font-size: 18px; font-weight: bold;">${monthNames[month]} ${year}</h1>
                <div style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; text-align: center; font-weight: bold; font-size: 10px; background: #e2e8f0; padding: 4px; margin-bottom: 2px;">
                    <div>Lun</div><div>Mar</div><div>Mer</div><div>Gio</div><div>Ven</div><div>Sab</div><div>Dom</div>
                </div>
@@ -1047,8 +1047,8 @@ function bindModalEvents() {
             let dayHtml = `
             <div style="min-height: 70px; background: #ffffff; border: 1px solid #cbd5e1; border-radius: 4px; padding: 3px; display: flex; flex-direction: column; overflow: hidden; box-sizing: border-box;">
                 <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 2px; margin-bottom: 2px;">
-                    <span style="font-size: 7px; color: #64748b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 65%;">${dayInfo.festa ? '<b>' + dayInfo.festa + '</b>' : dayInfo.santo}</span>
-                    <span style="font-size: 9px; font-weight: bold; color: ${dayInfo.festa ? '#ef4444' : '#0f172a'};">${i}</span>
+                    <span style="font-size: 10px; color: #64748b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 65%;">${dayInfo.festa ? '<b>' + dayInfo.festa + '</b>' : dayInfo.santo}</span>
+                    <span style="font-size: 12px; font-weight: bold; color: ${dayInfo.festa ? '#ef4444' : '#0f172a'};">${i}</span>
                 </div>
                 <div style="display: flex; flex-direction: column; gap: 2px; flex-grow: 1;">
             `;
