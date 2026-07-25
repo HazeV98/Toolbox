@@ -220,7 +220,7 @@ function buildModalsToBody() {
                     <h2>Esporta in PDF</h2>
                     <button id="btn-close-export" class="icon-btn"><span class="material-symbols-outlined">close</span></button>
                 </div>
-                <p style="font-size:0.85rem; margin-bottom:1rem; color:var(--text-secondary);">Seleziona il mese. Verrà generato un documento orizzontale compatto su una singola pagina.</p>
+                <p style="font-size:0.85rem; margin-bottom:1rem; color:var(--text-secondary);">Seleziona il mese. Verrà generata una griglia mensile classica a 7 colonne in un'unica pagina.</p>
                 <div class="input-group" style="margin-bottom: 1rem;">
                     <input type="month" id="export-month" class="input-select" style="width:100%; margin:0;">
                 </div>
@@ -1018,29 +1018,39 @@ function bindModalEvents() {
         const [y, m] = monthVal.split('-');
         const year = parseInt(y);
         const month = parseInt(m) - 1; 
-        const daysInMonth = new Date(year, month + 1, 0).getDate();
         const monthNames = ["Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno", "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre"];
 
+        const firstDay = new Date(year, month, 1).getDay();
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+        let startOffset = firstDay === 0 ? 6 : firstDay - 1; 
+
         let htmlContent = `
-            <div id="pdf-export-wrap" style="padding: 10px; font-family: sans-serif; background: #fff; color: #000; box-sizing: border-box;">
-               <h1 style="text-align:center; color:#2563eb; margin-bottom: 10px; font-size: 18px; font-weight: bold;">${monthNames[month]} ${year}</h1>
-               <div style="column-count: 4; column-gap: 15px; font-size: 11px; width: 100%;">
+            <div id="pdf-export-wrap" style="padding: 10px; font-family: sans-serif; background: #fff; color: #000; box-sizing: border-box; width: 100%;">
+               <h1 style="text-align:center; color:#2563eb; margin-bottom: 8px; font-size: 16px; font-weight: bold;">${monthNames[month]} ${year}</h1>
+               <div style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; text-align: center; font-weight: bold; font-size: 10px; background: #e2e8f0; padding: 4px; margin-bottom: 2px;">
+                   <div>Lun</div><div>Mar</div><div>Mer</div><div>Gio</div><div>Ven</div><div>Sab</div><div>Dom</div>
+               </div>
+               <div style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; width: 100%;">
         `;
 
-        for(let i=1; i<=daysInMonth; i++) {
+        // Celle vuote prima del mese
+        for (let i = 0; i < startOffset; i++) {
+            htmlContent += `<div style="min-height: 70px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 4px; opacity: 0.3;"></div>`;
+        }
+
+        // Giorni del mese
+        for (let i = 1; i <= daysInMonth; i++) {
             const dateStr = `${year}-${String(month+1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
             const dayEntries = entries.filter(e => e.date === dateStr);
-
             const dayInfo = getDayInfo(i, month + 1, year);
-            let subText = dayInfo.santo;
-            if(dayInfo.festa) subText += ` - <b>${dayInfo.festa}</b>`;
 
             let dayHtml = `
-            <div style="break-inside: avoid; margin-bottom: 8px;">
-                <div style="border-bottom: 1px solid #cbd5e1; margin-bottom: 4px; padding-bottom: 2px;">
-                    <span style="font-size:12px; font-weight:bold; color:#1e293b;">${i} ${monthNames[month]}</span>
-                    <span style="font-size:9px; color:#64748b; margin-left:5px;">${subText}</span>
+            <div style="min-height: 70px; background: #ffffff; border: 1px solid #cbd5e1; border-radius: 4px; padding: 3px; display: flex; flex-direction: column; overflow: hidden; box-sizing: border-box;">
+                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 2px; margin-bottom: 2px;">
+                    <span style="font-size: 7px; color: #64748b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 65%;">${dayInfo.festa ? '<b>' + dayInfo.festa + '</b>' : dayInfo.santo}</span>
+                    <span style="font-size: 9px; font-weight: bold; color: ${dayInfo.festa ? '#ef4444' : '#0f172a'};">${i}</span>
                 </div>
+                <div style="display: flex; flex-direction: column; gap: 2px; flex-grow: 1;">
             `;
 
             if (dayEntries.length > 0) {
@@ -1058,22 +1068,21 @@ function bindModalEvents() {
                     if (entry.type === 'note' && !userFilter.notes) return;
 
                     const isMine = entry.ownerUid === auth.currentUser.uid;
-                    let ownerName = isMine ? 'Mio' : (sharedUsersData[entry.ownerUid]?.name || 'Condiviso');
-                    let timeStr = entry.type === 'note' ? 'Nota' : `${entry.startTime} ${entry.endTime ? '- '+entry.endTime : ''}`;
+                    let ownerName = isMine ? '' : ` (${sharedUsersData[entry.ownerUid]?.name || 'Cond.'})`;
+                    let timeStr = entry.type === 'note' ? 'Nota' : `${entry.startTime}`;
 
                     let color = entry.type === 'shift' ? '#10b981' : (entry.type === 'event' ? '#3b82f6' : '#f59e0b');
                     if (entry.isPrivate) color = '#ef4444';
 
                     dayHtml += `
-                        <div style="margin-bottom: 3px; border-left: 2px solid ${color}; padding-left: 4px; line-height: 1.1;">
-                            <div style="font-weight:bold; font-size:10px; color:#0f172a;">${entry.title} <span style="font-size:8px; color:#64748b;">(${ownerName})</span></div>
-                            <div style="font-size:9px; color:#475569;">${timeStr}</div>
+                        <div style="font-size: 7px; background: ${color}15; border-left: 2px solid ${color}; padding: 1px 2px; border-radius: 2px; line-height: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                            <b>${timeStr}</b> ${entry.title}${ownerName}
                         </div>
                     `;
                 });
             }
 
-            dayHtml += `</div>`;
+            dayHtml += `</div></div>`;
             htmlContent += dayHtml;
         }
 
