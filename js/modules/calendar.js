@@ -220,7 +220,7 @@ function buildModalsToBody() {
                     <h2>Esporta in PDF</h2>
                     <button id="btn-close-export" class="icon-btn"><span class="material-symbols-outlined">close</span></button>
                 </div>
-                <p style="font-size:0.85rem; margin-bottom:1rem; color:var(--text-secondary);">Seleziona il mese. Verrà generata una griglia mensile classica a 7 colonne in un'unica pagina con font ingranditi.</p>
+                <p style="font-size:0.85rem; margin-bottom:1rem; color:var(--text-secondary);">Seleziona il mese. Verrà generata una griglia mensile classica a 7 colonne in un'unica pagina con font ingranditi e numeri a destra.</p>
                 <div class="input-group" style="margin-bottom: 1rem;">
                     <input type="month" id="export-month" class="input-select" style="width:100%; margin:0;">
                 </div>
@@ -1026,8 +1026,8 @@ function bindModalEvents() {
 
         let htmlContent = `
             <div id="pdf-export-wrap" style="padding: 10px; font-family: sans-serif; background: #fff; color: #000; box-sizing: border-box; width: 100%;">
-               <h1 style="text-align:center; color:#2563eb; margin-bottom: 8px; font-size: 20px; font-weight: bold;">${monthNames[month]} ${year}</h1>
-               <div style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; text-align: center; font-weight: bold; font-size: 11px; background: #e2e8f0; padding: 6px; margin-bottom: 3px;">
+               <h1 style="text-align:center; color:#2563eb; margin-bottom: 8px; font-size: 22px; font-weight: bold;">${monthNames[month]} ${year}</h1>
+               <div style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; text-align: center; font-weight: bold; font-size: 12px; background: #e2e8f0; padding: 6px; margin-bottom: 3px;">
                    <div>Lun</div><div>Mar</div><div>Mer</div><div>Gio</div><div>Ven</div><div>Sab</div><div>Dom</div>
                </div>
                <div style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; width: 100%;">
@@ -1035,7 +1035,7 @@ function bindModalEvents() {
 
         // Celle vuote prima del mese
         for (let i = 0; i < startOffset; i++) {
-            htmlContent += `<div style="min-height: 85px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 4px; opacity: 0.3;"></div>`;
+            htmlContent += `<div style="min-height: 95px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 4px; opacity: 0.3;"></div>`;
         }
 
         // Giorni del mese
@@ -1045,10 +1045,10 @@ function bindModalEvents() {
             const dayInfo = getDayInfo(i, month + 1, year);
 
             let dayHtml = `
-            <div style="min-height: 85px; background: #ffffff; border: 1px solid #cbd5e1; border-radius: 4px; padding: 4px; display: flex; flex-direction: column; overflow: hidden; box-sizing: border-box;">
+            <div style="min-height: 95px; background: #ffffff; border: 1px solid #cbd5e1; border-radius: 4px; padding: 5px; display: flex; flex-direction: column; overflow: hidden; box-sizing: border-box;">
                 <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 3px; margin-bottom: 3px;">
-                    <span style="font-size: 11px; font-weight: bold; color: ${dayInfo.festa ? '#ef4444' : '#0f172a'};">${i}</span>
-                    <span style="font-size: 8.5px; color: #64748b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 75%; text-align: right;">${dayInfo.festa ? '<b>' + dayInfo.festa + '</b>' : dayInfo.santo}</span>
+                    <span style="font-size: 9.5px; color: #64748b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 75%;">${dayInfo.festa ? '<b>' + dayInfo.festa + '</b>' : dayInfo.santo}</span>
+                    <span style="font-size: 13px; font-weight: bold; color: ${dayInfo.festa ? '#ef4444' : '#0f172a'};">${i}</span>
                 </div>
                 <div style="display: flex; flex-direction: column; gap: 2px; flex-grow: 1;">
             `;
@@ -1075,7 +1075,7 @@ function bindModalEvents() {
                     if (entry.isPrivate) color = '#ef4444';
 
                     dayHtml += `
-                        <div style="font-size: 8.5px; background: ${color}15; border-left: 2px solid ${color}; padding: 1px 3px; border-radius: 2px; line-height: 1.1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                        <div style="font-size: 10px; background: ${color}15; border-left: 2px solid ${color}; padding: 1px 3px; border-radius: 2px; line-height: 1.1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                             <b>${timeStr}</b> ${entry.title}${ownerName}
                         </div>
                     `;
