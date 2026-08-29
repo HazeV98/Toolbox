@@ -4,7 +4,7 @@ let containerEl = null;
 let editMode = false;
 let githubPat = localStorage.getItem('toolbox_gh_pat') || '';
 let currentEditAppId = null;
-let currentApps = []; // Stato locale delle app
+let currentApps = [];
 
 // Credenziali Repository
 const GH_OWNER = 'HazeV98'; 
@@ -74,7 +74,6 @@ function buildMainUI() {
     }
 }
 
-// Carica le app bypassando la cache del Service Worker con un timestamp
 async function loadApps() {
     const grid = document.getElementById('ac-app-grid');
     try {
@@ -204,17 +203,25 @@ function bindGridEvents() {
         } else {
             const type = card.dataset.type;
             const target = card.dataset.target;
+            
             if (type === 'link') {
                 window.open(target, '_blank');
             } else if (type === 'module') {
-                // Sfrutta il router già esistente in app.js simulando un click su una card compatibile
-                const fakeCard = document.createElement('div');
-                fakeCard.className = 'module-card';
-                fakeCard.setAttribute('data-module', target);
-                fakeCard.innerHTML = `<p>${card.querySelector('p').innerText}</p>`;
-                document.getElementById('view-home').appendChild(fakeCard);
-                fakeCard.click(); 
-                fakeCard.remove();
+                const nativeCard = document.querySelector('#view-home .module-card');
+                
+                if (nativeCard) {
+                    const originalModule = nativeCard.getAttribute('data-module');
+                    const pEl = nativeCard.querySelector('p');
+                    const originalTitle = pEl.innerText;
+
+                    nativeCard.setAttribute('data-module', target);
+                    pEl.innerText = card.querySelector('p').innerText;
+
+                    nativeCard.click();
+
+                    nativeCard.setAttribute('data-module', originalModule);
+                    pEl.innerText = originalTitle;
+                }
             }
         }
     });
@@ -271,7 +278,6 @@ async function loadUnregisteredModules() {
         const res = await fetch('mappa_file.json');
         const mapData = await res.json();
         
-        // Filtra i moduli javascript escludendo quelli di sistema base
         const allModules = mapData.albero
             .filter(path => path.startsWith('js/modules/') && path.endsWith('.js'))
             .map(path => path.replace('js/modules/', '').replace('.js', ''))
@@ -317,7 +323,6 @@ async function handleAppRegistration() {
         
         renderGrid();
         
-        // Reset campi form
         document.getElementById('ac-app-name').value = '';
         document.getElementById('ac-app-icon').value = '';
         if(type === 'link') document.getElementById('ac-link-url').value = '';
@@ -329,11 +334,10 @@ async function handleAppRegistration() {
     } catch (err) {
         msgEl.innerText = err.message || "Errore durante la comunicazione con GitHub.";
         msgEl.style.color = "red";
-        currentApps.pop(); // Revert in case of failure
+        currentApps.pop(); 
     }
 }
 
-// Scrive l'array currentApps nel file apps.json su GitHub
 async function syncAppsToGitHub(commitMsg) {
     if (!githubPat) throw new Error('Token mancante');
     
@@ -341,9 +345,7 @@ async function syncAppsToGitHub(commitMsg) {
     try {
         const fileData = await fetchGitHubFileInfo('apps.json');
         if (fileData) sha = fileData.sha;
-    } catch (e) {
-        // Se il file non esiste (404), sha rimane null per crearlo nuovo
-    }
+    } catch (e) {}
 
     const updatedContent = JSON.stringify(currentApps, null, 4);
     const newContentBase64 = btoa(unescape(encodeURIComponent(updatedContent)));
@@ -351,7 +353,6 @@ async function syncAppsToGitHub(commitMsg) {
     await commitGitHubFile('apps.json', sha, newContentBase64, commitMsg);
 }
 
-// Recupera solo i metadata del file (per ottenere la SHA)
 async function fetchGitHubFileInfo(path) {
     const url = `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/${path}?ref=${GH_BRANCH}`;
     const response = await fetch(url, { headers: { 'Authorization': `token ${githubPat}` } });
@@ -363,7 +364,7 @@ async function fetchGitHubFileInfo(path) {
 async function commitGitHubFile(path, sha, base64Content, message) {
     const url = `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/${path}`;
     const bodyData = { message: message, content: base64Content, branch: GH_BRANCH };
-    if (sha) bodyData.sha = sha; // Includi sha solo se il file esiste già (update), omettilo per crearlo
+    if (sha) bodyData.sha = sha; 
     
     const response = await fetch(url, {
         method: 'PUT',
