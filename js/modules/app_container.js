@@ -3,7 +3,8 @@ import { isAdmin } from '../app.js';
 let containerEl = null;
 let editMode = false;
 let githubPat = localStorage.getItem('toolbox_gh_pat') || '';
-let currentEditCard = null;
+let currentEditAppId = null;
+let currentApps = []; // Stato locale delle app
 
 // Credenziali Repository
 const GH_OWNER = 'HazeV98'; 
@@ -21,6 +22,7 @@ export async function init(container) {
     }
     
     bindGridEvents();
+    await loadApps();
 }
 
 function injectStyles() {
@@ -61,39 +63,54 @@ function buildMainUI() {
                 <h2 style="margin:0; font-size:1.3rem;">Le Mie App</h2>
                 ${adminControls}
             </div>
-            <div class="app-grid" id="ac-app-grid"></div>
+            <div class="app-grid" id="ac-app-grid">
+                <div class="loader" style="margin: 2rem auto; grid-column: 1 / -1;"></div>
+            </div>
         </div>
     `;
-
-    loadAppsIntoGrid();
 
     if (isAdmin) {
         document.getElementById('ac-btn-edit').addEventListener('click', toggleEditMode);
     }
 }
 
-// Clona le app personalizzate da index.html per mostrarle e gestirle nella griglia
-function loadAppsIntoGrid() {
+// Carica le app bypassando la cache del Service Worker con un timestamp
+async function loadApps() {
+    const grid = document.getElementById('ac-app-grid');
+    try {
+        const res = await fetch(`apps.json?t=${new Date().getTime()}`);
+        if (!res.ok) throw new Error("File apps.json non trovato");
+        currentApps = await res.json();
+        renderGrid();
+    } catch (err) {
+        currentApps = [];
+        grid.innerHTML = '<p style="grid-column: 1 / -1; text-align:center; color:var(--text-secondary);">Nessuna app installata o file apps.json mancante.</p>';
+    }
+}
+
+function renderGrid() {
     const grid = document.getElementById('ac-app-grid');
     grid.innerHTML = '';
     
-    const allCards = document.querySelectorAll('#view-home .module-card');
-    allCards.forEach(card => {
-        if (!card.querySelector('lord-icon')) {
-            const clone = document.createElement('div');
-            clone.className = 'app-icon-card';
-            
-            if (card.tagName === 'A') {
-                clone.setAttribute('data-link', card.href);
-                clone.setAttribute('data-type', 'link');
-            } else {
-                clone.setAttribute('data-module', card.getAttribute('data-module'));
-                clone.setAttribute('data-type', 'module');
-            }
-            
-            clone.innerHTML = card.innerHTML;
-            grid.appendChild(clone);
+    currentApps.forEach(app => {
+        const card = document.createElement('div');
+        card.className = 'app-icon-card';
+        card.dataset.id = app.id;
+        card.dataset.type = app.type;
+        card.dataset.target = app.target;
+        
+        let visualHtml = '';
+        if (app.type === 'link') {
+            let domain = app.target;
+            try { domain = new URL(app.target).hostname; } catch(e){}
+            const fallbackAttr = `this.outerHTML='<i class=&quot;${app.icon}&quot; style=&quot;font-size:2.5rem; color:var(--accent-color); margin-bottom:8px;&quot;></i>'`;
+            visualHtml = `<img src="https://www.google.com/s2/favicons?domain=${domain}&sz=128" style="width:40px; height:40px; margin-bottom:8px; border-radius:8px;" onerror="${fallbackAttr}">`;
+        } else {
+            visualHtml = `<i class="${app.icon}" style="font-size:2.5rem; color:var(--accent-color); margin-bottom:8px;"></i>`;
         }
+        
+        card.innerHTML = `${visualHtml}<p>${app.name}</p>`;
+        grid.appendChild(card);
     });
 }
 
@@ -179,14 +196,26 @@ function bindGridEvents() {
         if (!card) return;
 
         if (editMode && isAdmin) {
-            currentEditCard = card;
-            const name = card.querySelector('p, span').innerText.trim();
+            currentEditAppId = card.dataset.id;
+            const name = card.querySelector('p').innerText;
             document.getElementById('ac-del-target-name').innerText = name;
             document.getElementById('ac-edit-msg').innerText = '';
             document.getElementById('ac-edit-app-modal').classList.remove('hidden');
         } else {
-            const link = card.getAttribute('data-link');
-            if (link) window.open(link, '_blank');
+            const type = card.dataset.type;
+            const target = card.dataset.target;
+            if (type === 'link') {
+                window.open(target, '_blank');
+            } else if (type === 'module') {
+                // Sfrutta il router già esistente in app.js simulando un click su una card compatibile
+                const fakeCard = document.createElement('div');
+                fakeCard.className = 'module-card';
+                fakeCard.setAttribute('data-module', target);
+                fakeCard.innerHTML = `<p>${card.querySelector('p').innerText}</p>`;
+                document.getElementById('view-home').appendChild(fakeCard);
+                fakeCard.click(); 
+                fakeCard.remove();
+            }
         }
     });
 }
@@ -221,17 +250,13 @@ function bindAdminEvents() {
 
     document.getElementById('ac-btn-delete-app').addEventListener('click', async () => {
         const msgEl = document.getElementById('ac-edit-msg');
-        const appName = document.getElementById('ac-del-target-name').innerText;
-
-        msgEl.innerText = "Eliminazione da GitHub in corso...";
+        msgEl.innerText = "Eliminazione in corso...";
         
         try {
-            await updateGitHubFile('index.html', appName, '', "Rimozione app");
+            currentApps = currentApps.filter(app => app.id !== currentEditAppId);
+            await syncAppsToGitHub("Rimozione app");
             
-            currentEditCard.remove(); 
-            const homeCard = Array.from(document.querySelectorAll('#view-home .module-card')).find(c => c.innerText.includes(appName));
-            if(homeCard) homeCard.remove();
-            
+            renderGrid();
             document.getElementById('ac-edit-app-modal').classList.add('hidden');
         } catch (err) {
             msgEl.innerText = "Errore durante l'eliminazione.";
@@ -246,9 +271,11 @@ async function loadUnregisteredModules() {
         const res = await fetch('mappa_file.json');
         const mapData = await res.json();
         
+        // Filtra i moduli javascript escludendo quelli di sistema base
         const allModules = mapData.albero
             .filter(path => path.startsWith('js/modules/') && path.endsWith('.js'))
-            .map(path => path.replace('js/modules/', '').replace('.js', ''));
+            .map(path => path.replace('js/modules/', '').replace('.js', ''))
+            .filter(m => !['actv', 'admin', 'app_container', 'calendar', 'contacts', 'links', 'list', 'notes', 'passwords', 'sensors'].includes(m));
         
         select.innerHTML = allModules.length === 0 
             ? '<option value="">Nessun modulo nuovo trovato</option>' 
@@ -273,78 +300,75 @@ async function handleAppRegistration() {
         return;
     }
 
-    msgEl.innerText = "Registrazione sul repository in corso...";
+    msgEl.innerText = "Registrazione in corso...";
     msgEl.style.color = "var(--text-primary)";
 
+    const newApp = {
+        id: 'app_' + Date.now(),
+        name: name,
+        type: type,
+        target: target,
+        icon: icon
+    };
+
     try {
-        let domain = target;
-        try { domain = new URL(target).hostname; } catch(e){}
-
-        const fallbackAttr = `this.outerHTML='<i class=&quot;${icon}&quot; style=&quot;font-size:2.5rem; color:var(--accent-color); margin-bottom:8px;&quot;></i>'`;
+        currentApps.push(newApp);
+        await syncAppsToGitHub(`Aggiunta app: ${name}`);
         
-        const newHtmlSnippet = type === 'module' 
-            ? `\n<div class="module-card" data-module="${target}"><i class="${icon}" style="font-size:2.5rem; color:var(--accent-color); margin-bottom:8px;"></i><p>${name}</p></div>`
-            : `\n<a href="${target}" target="_blank" class="module-card" style="text-decoration:none;"><img src="https://www.google.com/s2/favicons?domain=${domain}&sz=128" style="width:40px; height:40px; margin-bottom:8px; border-radius:8px;" onerror="${fallbackAttr}"><p style="color:var(--text-primary);">${name}</p></a>`;
-            
-        const fileData = await fetchGitHubFile('index.html');
-        const currentContent = decodeURIComponent(escape(atob(fileData.content)));
-        const updatedContent = currentContent.replace('</section>', newHtmlSnippet + '\n</section>');
-        const newContentBase64 = btoa(unescape(encodeURIComponent(updatedContent)));
+        renderGrid();
         
-        await commitGitHubFile('index.html', fileData.sha, newContentBase64, `Aggiunta app: ${name}`);
-
-        // Aggiunta visiva istantanea
-        const homeView = document.getElementById('view-home');
-        if (homeView) {
-            const tempDiv = document.createElement('div');
-            tempDiv.innerHTML = newHtmlSnippet.trim();
-            homeView.appendChild(tempDiv.firstChild);
-        }
-        loadAppsIntoGrid();
-
+        // Reset campi form
+        document.getElementById('ac-app-name').value = '';
+        document.getElementById('ac-app-icon').value = '';
+        if(type === 'link') document.getElementById('ac-link-url').value = '';
+        
         msgEl.innerText = "App aggiunta con successo!";
         msgEl.style.color = "var(--accent-color)";
         setTimeout(() => document.getElementById('ac-add-modal').classList.add('hidden'), 1500);
 
     } catch (err) {
-        msgEl.innerText = "Errore durante la comunicazione con GitHub.";
+        msgEl.innerText = err.message || "Errore durante la comunicazione con GitHub.";
         msgEl.style.color = "red";
+        currentApps.pop(); // Revert in case of failure
     }
 }
 
-// Funzione di sostituzione basata su Espressione Regolare per prevenire errori di formattazione DOM
-async function updateGitHubFile(filename, appName, newSnippet, commitMsg) {
+// Scrive l'array currentApps nel file apps.json su GitHub
+async function syncAppsToGitHub(commitMsg) {
     if (!githubPat) throw new Error('Token mancante');
     
-    const fileData = await fetchGitHubFile(filename);
-    const currentContent = decodeURIComponent(escape(atob(fileData.content)));
-    
-    const safeName = appName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const regex = new RegExp(`(?:<a[^>]*>[\\s\\S]*?<p>${safeName}</p>[\\s\\S]*?</a>|<div[^>]*class="module-card"[^>]*>[\\s\\S]*?<p>${safeName}</p>[\\s\\S]*?</div>)`);
-    
-    if (!regex.test(currentContent)) {
-        throw new Error("Impossibile trovare l'App nel file sorgente.");
+    let sha = null;
+    try {
+        const fileData = await fetchGitHubFileInfo('apps.json');
+        if (fileData) sha = fileData.sha;
+    } catch (e) {
+        // Se il file non esiste (404), sha rimane null per crearlo nuovo
     }
 
-    const updatedContent = currentContent.replace(regex, newSnippet);
+    const updatedContent = JSON.stringify(currentApps, null, 4);
     const newContentBase64 = btoa(unescape(encodeURIComponent(updatedContent)));
     
-    await commitGitHubFile(filename, fileData.sha, newContentBase64, commitMsg);
+    await commitGitHubFile('apps.json', sha, newContentBase64, commitMsg);
 }
 
-async function fetchGitHubFile(path) {
+// Recupera solo i metadata del file (per ottenere la SHA)
+async function fetchGitHubFileInfo(path) {
     const url = `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/${path}?ref=${GH_BRANCH}`;
     const response = await fetch(url, { headers: { 'Authorization': `token ${githubPat}` } });
-    if (!response.ok) throw new Error('File non trovato');
+    if (response.status === 404) return null;
+    if (!response.ok) throw new Error('Errore durante la lettura del file');
     return await response.json();
 }
 
 async function commitGitHubFile(path, sha, base64Content, message) {
     const url = `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/${path}`;
+    const bodyData = { message: message, content: base64Content, branch: GH_BRANCH };
+    if (sha) bodyData.sha = sha; // Includi sha solo se il file esiste già (update), omettilo per crearlo
+    
     const response = await fetch(url, {
         method: 'PUT',
         headers: { 'Authorization': `token ${githubPat}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: message, content: base64Content, sha: sha, branch: GH_BRANCH })
+        body: JSON.stringify(bodyData)
     });
     if (!response.ok) throw new Error('Errore durante il commit');
     return await response.json();
