@@ -3,8 +3,8 @@ import { isAdmin } from '../app.js';
 let containerEl = null;
 let editMode = false;
 let githubPat = localStorage.getItem('toolbox_gh_pat') || '';
+let currentEditCard = null; // Memorizza la card attualmente in fase di modifica
 
-// ATTENZIONE: Sostituisci con i dati reali del tuo repository
 const GH_OWNER = 'HazeV98'; 
 const GH_REPO = 'Toolbox';
 const GH_BRANCH = 'main';
@@ -18,6 +18,8 @@ export async function init(container) {
         buildAdminModals();
         bindAdminEvents();
     }
+    
+    bindGridEvents();
 }
 
 function injectStyles() {
@@ -35,6 +37,8 @@ function injectStyles() {
         .ac-actions { display: flex; gap: 0.5rem; }
         .ac-actions button { transition: transform 0.2s; }
         .edit-active .ac-edit-btn { background: var(--accent-color); color: white; border-radius: 50%; }
+        .edit-active .app-icon-card { border-style: dashed; border-color: var(--text-secondary); }
+        .edit-active .app-icon-card:hover { border-color: #f59e0b; background: rgba(245, 158, 11, 0.1); }
         
         .modal-body { padding: 1rem 0; display: flex; flex-direction: column; gap: 1rem; }
     `;
@@ -58,9 +62,9 @@ function buildMainUI() {
             </div>
             
             <div class="app-grid" id="ac-app-grid">
-                <!-- Esempio di app caricata dinamicamente. Le app future andranno lette da un file apps.json o da index.html -->
-                <div class="app-icon-card" data-link="https://www.google.com">
-                    <span class="material-symbols-outlined" style="font-size:2.5rem; color:var(--accent-color); margin-bottom:8px;">link</span>
+                <!-- ESEMPIO: Sostituire con il caricamento dinamico reale -->
+                <div class="app-icon-card" data-link="https://www.google.com" data-type="link">
+                    <i class="fa-solid fa-link" style="font-size:2.5rem; color:var(--accent-color); margin-bottom:8px;"></i>
                     <span>Link Esempio</span>
                 </div>
             </div>
@@ -78,13 +82,13 @@ function buildAdminModals() {
     wrapper.innerHTML = `
         <!-- MODALE TOKEN PAT -->
         <div id="ac-pat-modal" class="modal-overlay hidden" style="z-index: 2500;">
+            <!-- ... (Stesso codice di prima per il token) ... -->
             <div class="modal-content">
                 <div class="modal-header">
                     <h2>Token GitHub PAT</h2>
                     <button id="ac-close-pat" class="icon-btn"><span class="material-symbols-outlined">close</span></button>
                 </div>
                 <div class="modal-body">
-                    <p style="font-size:0.85rem; color:var(--text-secondary);">Inserisci il tuo Personal Access Token per permettere l'aggiunta automatica dei moduli al repository.</p>
                     <input type="password" id="ac-pat-input" class="input-select" placeholder="ghp_xxxxxxxxxxxx" value="${githubPat}" style="width:100%;">
                     <button id="ac-save-pat" class="btn primary" style="width:100%;">Salva Token</button>
                 </div>
@@ -93,32 +97,25 @@ function buildAdminModals() {
 
         <!-- MODALE AGGIUNGI APP -->
         <div id="ac-add-modal" class="modal-overlay hidden" style="z-index: 2500;">
+            <!-- ... (Stesso codice di prima per aggiungere app) ... -->
+        </div>
+
+        <!-- MODALE MODIFICA/ELIMINA APP -->
+        <div id="ac-edit-app-modal" class="modal-overlay hidden" style="z-index: 2500;">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h2>Aggiungi App</h2>
-                    <button id="ac-close-add" class="icon-btn"><span class="material-symbols-outlined">close</span></button>
+                    <h2>Modifica App</h2>
+                    <button id="ac-close-edit-app" class="icon-btn"><span class="material-symbols-outlined">close</span></button>
                 </div>
                 <div class="modal-body">
-                    <select id="ac-add-type" class="input-select" style="width:100%;">
-                        <option value="module">Modulo Esistente (non registrato)</option>
-                        <option value="link">Link Esterno</option>
-                    </select>
+                    <input type="text" id="ac-edit-app-name" class="input-select" placeholder="Nome App" style="width:100%;">
+                    <input type="text" id="ac-edit-app-icon" class="input-select" placeholder="Icona FontAwesome (es. fa-solid fa-car)" style="width:100%;">
                     
-                    <div id="ac-module-select-wrap">
-                        <select id="ac-module-select" class="input-select" style="width:100%;">
-                            <option value="">Caricamento moduli...</option>
-                        </select>
+                    <div style="display:flex; gap:0.5rem; margin-top: 1rem;">
+                        <button id="ac-btn-delete-app" class="btn danger outline" style="flex:1;">Elimina</button>
+                        <button id="ac-btn-save-edit" class="btn primary" style="flex:1;">Salva</button>
                     </div>
-
-                    <div id="ac-link-input-wrap" class="hidden">
-                        <input type="url" id="ac-link-url" class="input-select" placeholder="https://..." style="width:100%;">
-                    </div>
-
-                    <input type="text" id="ac-app-name" class="input-select" placeholder="Nome App" style="width:100%;">
-                    <input type="text" id="ac-app-icon" class="input-select" placeholder="Icona FontAwesome (es. fas fa-car)" style="width:100%;">
-                    
-                    <button id="ac-confirm-add" class="btn primary" style="width:100%;">Registra e Aggiungi</button>
-                    <p id="ac-add-msg" class="msg-feedback" style="text-align:center;"></p>
+                    <p id="ac-edit-msg" class="msg-feedback" style="text-align:center;"></p>
                 </div>
             </div>
         </div>
@@ -143,122 +140,117 @@ function toggleEditMode() {
     }
 }
 
+function bindGridEvents() {
+    document.getElementById('ac-app-grid').addEventListener('click', (e) => {
+        const card = e.target.closest('.app-icon-card');
+        if (!card) return;
+
+        if (editMode && isAdmin) {
+            // Modalità Modifica: Apri il modale con i dati della card
+            currentEditCard = card;
+            const name = card.querySelector('span').innerText;
+            const iconElement = card.querySelector('i');
+            const iconClass = iconElement ? iconElement.className : '';
+            
+            document.getElementById('ac-edit-app-name').value = name;
+            document.getElementById('ac-edit-app-icon').value = iconClass;
+            document.getElementById('ac-edit-msg').innerText = '';
+            
+            document.getElementById('ac-edit-app-modal').classList.remove('hidden');
+        } else {
+            // Modalità Normale: Avvia l'app o apri il link
+            const link = card.getAttribute('data-link');
+            const module = card.getAttribute('data-module');
+            if (link) window.open(link, '_blank');
+            // Se gestisci l'apertura dei moduli qui dentro, aggiungi la logica per chiamare openModule() di app.js
+        }
+    });
+}
+
 function bindAdminEvents() {
-    // Gestione Token
+    // --- Token ---
     document.getElementById('ac-btn-key').addEventListener('click', () => document.getElementById('ac-pat-modal').classList.remove('hidden'));
     document.getElementById('ac-close-pat').addEventListener('click', () => document.getElementById('ac-pat-modal').classList.add('hidden'));
-    
     document.getElementById('ac-save-pat').addEventListener('click', () => {
         githubPat = document.getElementById('ac-pat-input').value.trim();
         localStorage.setItem('toolbox_gh_pat', githubPat);
         document.getElementById('ac-pat-modal').classList.add('hidden');
     });
 
-    // Gestione Aggiunta
-    document.getElementById('ac-btn-add').addEventListener('click', async () => {
-        document.getElementById('ac-add-modal').classList.remove('hidden');
-        await loadUnregisteredModules();
-    });
-    
-    document.getElementById('ac-close-add').addEventListener('click', () => document.getElementById('ac-add-modal').classList.add('hidden'));
+    // --- Chiusura Modale Modifica ---
+    document.getElementById('ac-close-edit-app').addEventListener('click', () => document.getElementById('ac-edit-app-modal').classList.add('hidden'));
 
-    document.getElementById('ac-add-type').addEventListener('change', (e) => {
-        const type = e.target.value;
-        if (type === 'module') {
-            document.getElementById('ac-module-select-wrap').classList.remove('hidden');
-            document.getElementById('ac-link-input-wrap').classList.add('hidden');
-        } else {
-            document.getElementById('ac-module-select-wrap').classList.add('hidden');
-            document.getElementById('ac-link-input-wrap').classList.remove('hidden');
+    // --- Salvataggio Modifica App ---
+    document.getElementById('ac-btn-save-edit').addEventListener('click', async () => {
+        const newName = document.getElementById('ac-edit-app-name').value.trim();
+        const newIcon = document.getElementById('ac-edit-app-icon').value.trim();
+        const msgEl = document.getElementById('ac-edit-msg');
+
+        if (!newName || !newIcon) return msgEl.innerText = "Compila tutti i campi.";
+        
+        msgEl.innerText = "Aggiornamento su GitHub in corso...";
+        
+        // Calcola l'HTML della card originale (per la ricerca) e di quella nuova
+        const oldHtml = currentEditCard.outerHTML;
+        
+        // Aggiorna visivamente il DOM
+        currentEditCard.querySelector('span').innerText = newName;
+        if(currentEditCard.querySelector('i')) currentEditCard.querySelector('i').className = newIcon;
+        const newHtml = currentEditCard.outerHTML;
+
+        try {
+            await updateGitHubFile('index.html', oldHtml, newHtml, `Modifica app: ${newName}`);
+            msgEl.innerText = "Modifica salvata!";
+            msgEl.style.color = "var(--accent-color)";
+            setTimeout(() => document.getElementById('ac-edit-app-modal').classList.add('hidden'), 1500);
+        } catch (err) {
+            msgEl.innerText = "Errore durante il salvataggio.";
+            msgEl.style.color = "red";
         }
     });
 
-    document.getElementById('ac-confirm-add').addEventListener('click', handleAppRegistration);
+    // --- Eliminazione App ---
+    document.getElementById('ac-btn-delete-app').addEventListener('click', async () => {
+        const msgEl = document.getElementById('ac-edit-msg');
+        if (!confirm("Sei sicuro di voler eliminare questa App?")) return;
+
+        msgEl.innerText = "Eliminazione da GitHub in corso...";
+        const oldHtml = currentEditCard.outerHTML;
+
+        try {
+            await updateGitHubFile('index.html', oldHtml, '', "Rimozione app");
+            currentEditCard.remove(); // Rimuovi dal DOM
+            document.getElementById('ac-edit-app-modal').classList.add('hidden');
+        } catch (err) {
+            msgEl.innerText = "Errore durante l'eliminazione.";
+            msgEl.style.color = "red";
+        }
+    });
 }
 
-async function loadUnregisteredModules() {
-    const select = document.getElementById('ac-module-select');
-    try {
-        const res = await fetch('mappa_file.json');
-        const mapData = await res.json();
-        
-        // Estrapola tutti i moduli .js dalla cartella js/modules/
-        const allModules = mapData.albero
-            .filter(path => path.startsWith('js/modules/') && path.endsWith('.js'))
-            .map(path => path.replace('js/modules/', '').replace('.js', ''));
-        
-        // QUI ANDREBBE INSERITA LA LOGICA PER ESCLUDERE I MODULI GIA' REGISTRATI
-        // (es. controllando il DOM attuale di index.html o un file apps.json)
-        const unregistered = allModules; 
-
-        select.innerHTML = unregistered.length === 0 
-            ? '<option value="">Nessun modulo nuovo trovato</option>' 
-            : unregistered.map(m => `<option value="${m}">${m}</option>`).join('');
-
-    } catch (err) {
-        select.innerHTML = '<option value="">Errore caricamento mappa</option>';
-    }
-}
-
-async function handleAppRegistration() {
-    if (!githubPat) {
-        alert("Inserisci prima il token PAT cliccando sull'icona a chiave!");
-        return;
+// Funzione unificata per modificare o rimuovere uno snippet di testo dal file
+async function updateGitHubFile(filename, oldSnippet, newSnippet, commitMsg) {
+    if (!githubPat) throw new Error('Token mancante');
+    
+    const fileData = await fetchGitHubFile(filename);
+    const currentContent = decodeURIComponent(escape(atob(fileData.content)));
+    
+    // Sostituisce lo snippet esatto. (Se newSnippet è vuoto '', equivale a un'eliminazione)
+    // Nota: in produzione è consigliabile usare espressioni regolari flessibili se l'HTML subisce formattazioni automatiche
+    const updatedContent = currentContent.replace(oldSnippet, newSnippet);
+    
+    if (currentContent === updatedContent) {
+        throw new Error("Impossibile trovare la corrispondenza esatta nel file sorgente.");
     }
 
-    const type = document.getElementById('ac-add-type').value;
-    const name = document.getElementById('ac-app-name').value.trim();
-    const icon = document.getElementById('ac-app-icon').value.trim();
-    const target = type === 'module' ? document.getElementById('ac-module-select').value : document.getElementById('ac-link-url').value.trim();
-    const msgEl = document.getElementById('ac-add-msg');
-
-    if (!name || !icon || !target) {
-        msgEl.innerText = "Compila tutti i campi.";
-        msgEl.style.color = "red";
-        return;
-    }
-
-    msgEl.innerText = "Registrazione sul repository in corso...";
-    msgEl.style.color = "var(--text-primary)";
-
-    try {
-        // Esempio di chiamata API GitHub per modificare un file (es. apps.json o index.html)
-        // 1. Ottieni lo SHA corrente del file
-        const fileData = await fetchGitHubFile('index.html');
-        
-        // 2. Modifica il contenuto (Decodifica Base64 UTF-8 sicura)
-        const currentContent = decodeURIComponent(escape(atob(fileData.content)));
-        
-        // 3. Prepara il nuovo snippet
-        const newHtmlSnippet = type === 'module' 
-            ? `\n<div class="module-card" data-module="${target}"><i class="${icon}"></i><p>${name}</p></div>`
-            : `\n<a href="${target}" target="_blank" class="module-card"><i class="${icon}"></i><p>${name}</p></a>`;
-            
-        // Inietta lo snippet (es. prima della chiusura del section view-home)
-        const updatedContent = currentContent.replace('</section>', newHtmlSnippet + '\n</section>');
-
-        // 4. Esegui il Commit (Codifica Base64 UTF-8 sicura)
-        const newContentBase64 = btoa(unescape(encodeURIComponent(updatedContent)));
-        
-        await commitGitHubFile('index.html', fileData.sha, newContentBase64, `Aggiunta app: ${name}`);
-
-        msgEl.innerText = "App aggiunta con successo!";
-        msgEl.style.color = "var(--accent-color)";
-        setTimeout(() => document.getElementById('ac-add-modal').classList.add('hidden'), 1500);
-
-    } catch (err) {
-        console.error(err);
-        msgEl.innerText = "Errore durante la comunicazione con GitHub.";
-        msgEl.style.color = "red";
-    }
+    const newContentBase64 = btoa(unescape(encodeURIComponent(updatedContent)));
+    await commitGitHubFile(filename, fileData.sha, newContentBase64, commitMsg);
 }
 
 async function fetchGitHubFile(path) {
     const url = `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/${path}?ref=${GH_BRANCH}`;
-    const response = await fetch(url, {
-        headers: { 'Authorization': `token ${githubPat}` }
-    });
-    if (!response.ok) throw new Error('File non trovato o token non valido');
+    const response = await fetch(url, { headers: { 'Authorization': `token ${githubPat}` } });
+    if (!response.ok) throw new Error('File non trovato');
     return await response.json();
 }
 
@@ -266,18 +258,9 @@ async function commitGitHubFile(path, sha, base64Content, message) {
     const url = `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/${path}`;
     const response = await fetch(url, {
         method: 'PUT',
-        headers: { 
-            'Authorization': `token ${githubPat}`,
-            'Content-Type': 'application/json' 
-        },
-        body: JSON.stringify({
-            message: message,
-            content: base64Content,
-            sha: sha,
-            branch: GH_BRANCH
-        })
+        headers: { 'Authorization': `token ${githubPat}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: message, content: base64Content, sha: sha, branch: GH_BRANCH })
     });
     if (!response.ok) throw new Error('Errore durante il commit');
     return await response.json();
 }
- 
