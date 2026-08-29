@@ -1,1 +1,10 @@
-[] 
+[
+    {
+        "id": "app_1788047247129",
+        "name": "Strumenti",
+        "type": "module",
+        "target": "sensors",
+        "iconType": "fontawesome",
+        "iconValue": "fas fa-gear"
+    }
+]
