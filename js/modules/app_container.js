@@ -108,7 +108,6 @@ function renderGrid() {
         } else if (app.iconType === 'custom') {
             visualHtml = `<img src="${app.iconValue}?t=${new Date().getTime()}" style="width:40px; height:40px; border-radius:8px;">`;
         } else {
-            // Default: FontAwesome
             visualHtml = `<i class="${app.iconValue || 'fas fa-link'}" style="font-size:2.5rem; color:var(--accent-color);"></i>`;
         }
         
@@ -150,9 +149,8 @@ function buildAdminModals() {
                             <option value="module">Modulo</option>
                             <option value="link">Link Esterno</option>
                         </select>
-                        <select id="ac-add-target-module" class="input-select" style="flex:1;"></select>
+                        <input type="text" id="ac-add-target-module" class="input-select" placeholder="Nome file js (es. actv)" style="flex:1;">
                         <input type="url" id="ac-add-target-link" class="input-select hidden" placeholder="https://..." style="flex:1;">
-                        <input type="text" id="ac-add-target-manual" class="input-select hidden" placeholder="Nome file js" style="flex:1;">
                     </div>
 
                     <label class="input-label">Stile Icona</label>
@@ -292,7 +290,6 @@ function toggleIconInputs(selectId, faInput, fileInput) {
 }
 
 function bindAdminEvents() {
-    // Gestione Token
     document.getElementById('ac-btn-key').addEventListener('click', () => document.getElementById('ac-pat-modal').classList.remove('hidden'));
     document.getElementById('ac-close-pat').addEventListener('click', () => document.getElementById('ac-pat-modal').classList.add('hidden'));
     document.getElementById('ac-save-pat').addEventListener('click', () => {
@@ -301,10 +298,8 @@ function bindAdminEvents() {
         document.getElementById('ac-pat-modal').classList.add('hidden');
     });
 
-    // Modale Aggiunta: UI Toggle
-    document.getElementById('ac-btn-add').addEventListener('click', async () => {
+    document.getElementById('ac-btn-add').addEventListener('click', () => {
         document.getElementById('ac-add-modal').classList.remove('hidden');
-        await loadUnregisteredModules();
     });
     document.getElementById('ac-close-add').addEventListener('click', () => document.getElementById('ac-add-modal').classList.add('hidden'));
 
@@ -312,7 +307,6 @@ function bindAdminEvents() {
         const isModule = e.target.value === 'module';
         document.getElementById('ac-add-target-module').classList.toggle('hidden', !isModule);
         document.getElementById('ac-add-target-link').classList.toggle('hidden', isModule);
-        document.getElementById('ac-add-target-manual').classList.add('hidden');
         
         const autoOpt = document.querySelector('#ac-add-modal .auto-icon-opt');
         autoOpt.classList.toggle('hidden', isModule);
@@ -322,15 +316,10 @@ function bindAdminEvents() {
         }
     });
 
-    document.getElementById('ac-add-target-module').addEventListener('change', (e) => {
-        document.getElementById('ac-add-target-manual').classList.toggle('hidden', e.target.value !== 'manual');
-    });
-
     document.getElementById('ac-add-icon-type').addEventListener('change', () => {
         toggleIconInputs('ac-add-icon-type', document.getElementById('ac-add-icon-fa'), document.getElementById('ac-add-icon-file'));
     });
 
-    // Modale Modifica: UI Toggle
     document.getElementById('ac-close-edit').addEventListener('click', () => document.getElementById('ac-edit-app-modal').classList.add('hidden'));
     
     document.getElementById('ac-edit-type').addEventListener('change', (e) => {
@@ -347,7 +336,6 @@ function bindAdminEvents() {
         toggleIconInputs('ac-edit-icon-type', document.getElementById('ac-edit-icon-fa'), document.getElementById('ac-edit-icon-file'));
     });
 
-    // Azioni CRUD
     document.getElementById('ac-confirm-add').addEventListener('click', () => handleAppSave(false));
     document.getElementById('ac-btn-save-edit').addEventListener('click', () => handleAppSave(true));
 
@@ -366,30 +354,6 @@ function bindAdminEvents() {
     });
 }
 
-async function loadUnregisteredModules() {
-    const select = document.getElementById('ac-add-target-module');
-    try {
-        const res = await fetch('mappa_file.json');
-        const mapData = await res.json();
-        
-        // Filtra moduli già in apps.json e quelli base di sistema
-        const registered = currentApps.filter(a => a.type === 'module').map(a => a.target);
-        const baseModules = ['actv', 'admin', 'app_container', 'calendar', 'contacts', 'links', 'list', 'notes', 'passwords', 'sensors'];
-        const excluded = [...baseModules, ...registered];
-
-        const allModules = mapData.albero
-            .filter(path => path.startsWith('js/modules/') && path.endsWith('.js'))
-            .map(path => path.replace('js/modules/', '').replace('.js', ''))
-            .filter(m => !excluded.includes(m));
-        
-        let options = allModules.map(m => `<option value="${m}">${m}</option>`).join('');
-        options += `<option value="manual">-- Inserisci nome manualmente --</option>`;
-        select.innerHTML = options;
-    } catch (err) {
-        select.innerHTML = `<option value="manual">-- Inserisci nome manualmente --</option>`;
-    }
-}
-
 async function handleAppSave(isEdit) {
     if (!githubPat) return alert("Inserisci prima il token PAT cliccando sull'icona a chiave!");
 
@@ -403,12 +367,9 @@ async function handleAppSave(isEdit) {
     if (isEdit) {
         target = document.getElementById(`ac-edit-target`).value.trim();
     } else {
-        if (type === 'link') {
-            target = document.getElementById(`ac-add-target-link`).value.trim();
-        } else {
-            const selectVal = document.getElementById(`ac-add-target-module`).value;
-            target = selectVal === 'manual' ? document.getElementById(`ac-add-target-manual`).value.trim() : selectVal;
-        }
+        target = type === 'link' 
+            ? document.getElementById(`ac-add-target-link`).value.trim() 
+            : document.getElementById(`ac-add-target-module`).value.trim();
     }
 
     if (!name || !target) {
@@ -430,7 +391,6 @@ async function handleAppSave(isEdit) {
                 msgEl.innerText = "Caricamento PNG su GitHub in corso...";
                 iconValue = await uploadIconToGitHub(fileInput.files[0]);
             } else if (isEdit) {
-                // Mantiene la vecchia icona se non ne carica una nuova
                 const oldApp = currentApps.find(a => a.id === currentEditAppId);
                 iconValue = oldApp.iconValue;
             } else {
