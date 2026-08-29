@@ -10,6 +10,7 @@ let currentApps = [];
 const GH_OWNER = 'HazeV98'; 
 const GH_REPO = 'Toolbox';
 const GH_BRANCH = 'main';
+const APPS_FILE_PATH = 'assets/apps.json';
 
 export async function init(container) {
     containerEl = container;
@@ -34,16 +35,17 @@ function injectStyles() {
         .app-icon-card { display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(150,150,150,0.05); border: 1px solid var(--border-soft); border-radius: 12px; padding: 1rem 0.5rem; cursor: pointer; transition: all 0.2s; position: relative; text-align: center; text-decoration: none; }
         .app-icon-card:hover { border-color: var(--accent-color); background: rgba(37, 99, 235, 0.05); }
         .app-icon-card i, .app-icon-card img { margin-bottom: 0.5rem; }
-        .app-icon-card p, .app-icon-card span { font-size: 0.8rem; font-weight: 600; line-height: 1.2; word-break: break-word; margin: 0; color: var(--text-primary); }
+        .app-icon-card p { font-size: 0.8rem; font-weight: 600; line-height: 1.2; word-break: break-word; margin: 0; color: var(--text-primary); }
         
         .ac-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-soft); padding-bottom: 0.5rem; margin-bottom: 1rem; }
         .ac-actions { display: flex; gap: 0.5rem; }
         .ac-actions button { transition: transform 0.2s; }
         .edit-active .ac-edit-btn { background: var(--accent-color); color: white; border-radius: 50%; }
         .edit-active .app-icon-card { border-style: dashed; border-color: var(--text-secondary); }
-        .edit-active .app-icon-card:hover { border-color: #ef4444; background: rgba(239, 68, 68, 0.1); }
+        .edit-active .app-icon-card:hover { border-color: #3b82f6; background: rgba(59, 130, 246, 0.1); }
         
-        .modal-body { padding: 1rem 0; display: flex; flex-direction: column; gap: 1rem; }
+        .modal-body { padding: 1rem 0; display: flex; flex-direction: column; gap: 0.8rem; }
+        .input-label { font-size: 0.85rem; color: var(--text-secondary); margin-bottom: -0.5rem; display: block; }
     `;
     document.head.appendChild(style);
 }
@@ -77,13 +79,13 @@ function buildMainUI() {
 async function loadApps() {
     const grid = document.getElementById('ac-app-grid');
     try {
-        const res = await fetch(`apps.json?t=${new Date().getTime()}`);
+        const res = await fetch(`${APPS_FILE_PATH}?t=${new Date().getTime()}`);
         if (!res.ok) throw new Error("File apps.json non trovato");
         currentApps = await res.json();
         renderGrid();
     } catch (err) {
         currentApps = [];
-        grid.innerHTML = '<p style="grid-column: 1 / -1; text-align:center; color:var(--text-secondary);">Nessuna app installata o file apps.json mancante.</p>';
+        grid.innerHTML = '<p style="grid-column: 1 / -1; text-align:center; color:var(--text-secondary);">Nessuna app installata o file assets/apps.json mancante.</p>';
     }
 }
 
@@ -99,13 +101,15 @@ function renderGrid() {
         card.dataset.target = app.target;
         
         let visualHtml = '';
-        if (app.type === 'link') {
+        if (app.iconType === 'auto' && app.type === 'link') {
             let domain = app.target;
             try { domain = new URL(app.target).hostname; } catch(e){}
-            const fallbackAttr = `this.outerHTML='<i class=&quot;${app.icon}&quot; style=&quot;font-size:2.5rem; color:var(--accent-color); margin-bottom:8px;&quot;></i>'`;
-            visualHtml = `<img src="https://www.google.com/s2/favicons?domain=${domain}&sz=128" style="width:40px; height:40px; margin-bottom:8px; border-radius:8px;" onerror="${fallbackAttr}">`;
+            visualHtml = `<img src="https://www.google.com/s2/favicons?domain=${domain}&sz=128" style="width:40px; height:40px; border-radius:8px;">`;
+        } else if (app.iconType === 'custom') {
+            visualHtml = `<img src="${app.iconValue}?t=${new Date().getTime()}" style="width:40px; height:40px; border-radius:8px;">`;
         } else {
-            visualHtml = `<i class="${app.icon}" style="font-size:2.5rem; color:var(--accent-color); margin-bottom:8px;"></i>`;
+            // Default: FontAwesome
+            visualHtml = `<i class="${app.iconValue || 'fas fa-link'}" style="font-size:2.5rem; color:var(--accent-color);"></i>`;
         }
         
         card.innerHTML = `${visualHtml}<p>${app.name}</p>`;
@@ -137,19 +141,31 @@ function buildAdminModals() {
                     <button id="ac-close-add" class="icon-btn"><span class="material-symbols-outlined">close</span></button>
                 </div>
                 <div class="modal-body">
-                    <select id="ac-add-type" class="input-select" style="width:100%;">
-                        <option value="module">Modulo Esistente (non registrato)</option>
-                        <option value="link">Link Esterno</option>
+                    <label class="input-label">Nome App</label>
+                    <input type="text" id="ac-add-name" class="input-select" placeholder="Es. Gestione Orari" style="width:100%;">
+                    
+                    <label class="input-label">Destinazione</label>
+                    <div style="display:flex; gap:0.5rem;">
+                        <select id="ac-add-type" class="input-select" style="width:120px;">
+                            <option value="module">Modulo</option>
+                            <option value="link">Link Esterno</option>
+                        </select>
+                        <select id="ac-add-target-module" class="input-select" style="flex:1;"></select>
+                        <input type="url" id="ac-add-target-link" class="input-select hidden" placeholder="https://..." style="flex:1;">
+                        <input type="text" id="ac-add-target-manual" class="input-select hidden" placeholder="Nome file js" style="flex:1;">
+                    </div>
+
+                    <label class="input-label">Stile Icona</label>
+                    <select id="ac-add-icon-type" class="input-select" style="width:100%;">
+                        <option value="fontawesome">FontAwesome (Es. fas fa-car)</option>
+                        <option value="custom">Carica PNG (assets/icons/)</option>
+                        <option value="auto" class="auto-icon-opt hidden">Favicon Automatica (Solo Link)</option>
                     </select>
-                    <div id="ac-module-select-wrap">
-                        <select id="ac-module-select" class="input-select" style="width:100%;"><option value="">Caricamento moduli...</option></select>
-                    </div>
-                    <div id="ac-link-input-wrap" class="hidden">
-                        <input type="url" id="ac-link-url" class="input-select" placeholder="https://..." style="width:100%;">
-                    </div>
-                    <input type="text" id="ac-app-name" class="input-select" placeholder="Nome App" style="width:100%;">
-                    <input type="text" id="ac-app-icon" class="input-select" placeholder="Icona FontAwesome (es. fas fa-car)" style="width:100%;">
-                    <button id="ac-confirm-add" class="btn primary" style="width:100%;">Registra e Aggiungi</button>
+                    
+                    <input type="text" id="ac-add-icon-fa" class="input-select" placeholder="Classe FA (es. fas fa-car)" style="width:100%;">
+                    <input type="file" id="ac-add-icon-file" class="input-select hidden" accept="image/png" style="width:100%;">
+                    
+                    <button id="ac-confirm-add" class="btn primary" style="width:100%; margin-top:0.5rem;">Registra App</button>
                     <p id="ac-add-msg" class="msg-feedback" style="text-align:center;"></p>
                 </div>
             </div>
@@ -158,12 +174,36 @@ function buildAdminModals() {
         <div id="ac-edit-app-modal" class="modal-overlay hidden" style="z-index: 2500;">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h2>Gestione App</h2>
-                    <button id="ac-close-edit-app" class="icon-btn"><span class="material-symbols-outlined">close</span></button>
+                    <h2>Modifica App</h2>
+                    <button id="ac-close-edit" class="icon-btn"><span class="material-symbols-outlined">close</span></button>
                 </div>
                 <div class="modal-body">
-                    <p style="font-size: 0.9rem; text-align: center;">Vuoi rimuovere <strong><span id="ac-del-target-name"></span></strong>?</p>
-                    <button id="ac-btn-delete-app" class="btn danger" style="width:100%;">Elimina App Definitivamente</button>
+                    <label class="input-label">Nome App</label>
+                    <input type="text" id="ac-edit-name" class="input-select" style="width:100%;">
+                    
+                    <label class="input-label">Destinazione</label>
+                    <div style="display:flex; gap:0.5rem;">
+                        <select id="ac-edit-type" class="input-select" style="width:120px;">
+                            <option value="module">Modulo</option>
+                            <option value="link">Link</option>
+                        </select>
+                        <input type="text" id="ac-edit-target" class="input-select" style="flex:1;">
+                    </div>
+
+                    <label class="input-label">Stile Icona</label>
+                    <select id="ac-edit-icon-type" class="input-select" style="width:100%;">
+                        <option value="fontawesome">FontAwesome</option>
+                        <option value="custom">Carica nuova PNG</option>
+                        <option value="auto" class="auto-icon-opt hidden">Favicon Automatica</option>
+                    </select>
+                    
+                    <input type="text" id="ac-edit-icon-fa" class="input-select" placeholder="Classe FA" style="width:100%;">
+                    <input type="file" id="ac-edit-icon-file" class="input-select hidden" accept="image/png" style="width:100%;">
+                    
+                    <div style="display:flex; gap:0.5rem; margin-top: 1rem;">
+                        <button id="ac-btn-delete" class="btn danger outline" style="flex:1;">Elimina</button>
+                        <button id="ac-btn-save-edit" class="btn primary" style="flex:1;">Salva Modifiche</button>
+                    </div>
                     <p id="ac-edit-msg" class="msg-feedback" style="text-align:center;"></p>
                 </div>
             </div>
@@ -196,8 +236,25 @@ function bindGridEvents() {
 
         if (editMode && isAdmin) {
             currentEditAppId = card.dataset.id;
-            const name = card.querySelector('p').innerText;
-            document.getElementById('ac-del-target-name').innerText = name;
+            const appData = currentApps.find(a => a.id === currentEditAppId);
+            
+            document.getElementById('ac-edit-name').value = appData.name;
+            document.getElementById('ac-edit-type').value = appData.type;
+            document.getElementById('ac-edit-target').value = appData.target;
+            document.getElementById('ac-edit-icon-type').value = appData.iconType || 'fontawesome';
+            
+            if(appData.type === 'link') {
+                document.querySelector('#ac-edit-app-modal .auto-icon-opt').classList.remove('hidden');
+            } else {
+                document.querySelector('#ac-edit-app-modal .auto-icon-opt').classList.add('hidden');
+            }
+
+            const faInput = document.getElementById('ac-edit-icon-fa');
+            const fileInput = document.getElementById('ac-edit-icon-file');
+            faInput.value = (appData.iconType === 'fontawesome') ? appData.iconValue : '';
+            fileInput.value = '';
+            
+            toggleIconInputs('ac-edit-icon-type', faInput, fileInput);
             document.getElementById('ac-edit-msg').innerText = '';
             document.getElementById('ac-edit-app-modal').classList.remove('hidden');
         } else {
@@ -208,7 +265,6 @@ function bindGridEvents() {
                 window.open(target, '_blank');
             } else if (type === 'module') {
                 const nativeCard = document.querySelector('#view-home .module-card');
-                
                 if (nativeCard) {
                     const originalModule = nativeCard.getAttribute('data-module');
                     const pEl = nativeCard.querySelector('p');
@@ -216,7 +272,6 @@ function bindGridEvents() {
 
                     nativeCard.setAttribute('data-module', target);
                     pEl.innerText = card.querySelector('p').innerText;
-
                     nativeCard.click();
 
                     nativeCard.setAttribute('data-module', originalModule);
@@ -227,7 +282,17 @@ function bindGridEvents() {
     });
 }
 
+function toggleIconInputs(selectId, faInput, fileInput) {
+    const val = document.getElementById(selectId).value;
+    faInput.classList.add('hidden');
+    fileInput.classList.add('hidden');
+    
+    if (val === 'fontawesome') faInput.classList.remove('hidden');
+    if (val === 'custom') fileInput.classList.remove('hidden');
+}
+
 function bindAdminEvents() {
+    // Gestione Token
     document.getElementById('ac-btn-key').addEventListener('click', () => document.getElementById('ac-pat-modal').classList.remove('hidden'));
     document.getElementById('ac-close-pat').addEventListener('click', () => document.getElementById('ac-pat-modal').classList.add('hidden'));
     document.getElementById('ac-save-pat').addEventListener('click', () => {
@@ -236,33 +301,62 @@ function bindAdminEvents() {
         document.getElementById('ac-pat-modal').classList.add('hidden');
     });
 
+    // Modale Aggiunta: UI Toggle
     document.getElementById('ac-btn-add').addEventListener('click', async () => {
         document.getElementById('ac-add-modal').classList.remove('hidden');
         await loadUnregisteredModules();
     });
     document.getElementById('ac-close-add').addEventListener('click', () => document.getElementById('ac-add-modal').classList.add('hidden'));
-    document.getElementById('ac-close-edit-app').addEventListener('click', () => document.getElementById('ac-edit-app-modal').classList.add('hidden'));
 
     document.getElementById('ac-add-type').addEventListener('change', (e) => {
-        if (e.target.value === 'module') {
-            document.getElementById('ac-module-select-wrap').classList.remove('hidden');
-            document.getElementById('ac-link-input-wrap').classList.add('hidden');
-        } else {
-            document.getElementById('ac-module-select-wrap').classList.add('hidden');
-            document.getElementById('ac-link-input-wrap').classList.remove('hidden');
+        const isModule = e.target.value === 'module';
+        document.getElementById('ac-add-target-module').classList.toggle('hidden', !isModule);
+        document.getElementById('ac-add-target-link').classList.toggle('hidden', isModule);
+        document.getElementById('ac-add-target-manual').classList.add('hidden');
+        
+        const autoOpt = document.querySelector('#ac-add-modal .auto-icon-opt');
+        autoOpt.classList.toggle('hidden', isModule);
+        if (isModule && document.getElementById('ac-add-icon-type').value === 'auto') {
+            document.getElementById('ac-add-icon-type').value = 'fontawesome';
+            toggleIconInputs('ac-add-icon-type', document.getElementById('ac-add-icon-fa'), document.getElementById('ac-add-icon-file'));
         }
     });
 
-    document.getElementById('ac-confirm-add').addEventListener('click', handleAppRegistration);
+    document.getElementById('ac-add-target-module').addEventListener('change', (e) => {
+        document.getElementById('ac-add-target-manual').classList.toggle('hidden', e.target.value !== 'manual');
+    });
 
-    document.getElementById('ac-btn-delete-app').addEventListener('click', async () => {
+    document.getElementById('ac-add-icon-type').addEventListener('change', () => {
+        toggleIconInputs('ac-add-icon-type', document.getElementById('ac-add-icon-fa'), document.getElementById('ac-add-icon-file'));
+    });
+
+    // Modale Modifica: UI Toggle
+    document.getElementById('ac-close-edit').addEventListener('click', () => document.getElementById('ac-edit-app-modal').classList.add('hidden'));
+    
+    document.getElementById('ac-edit-type').addEventListener('change', (e) => {
+        const isModule = e.target.value === 'module';
+        const autoOpt = document.querySelector('#ac-edit-app-modal .auto-icon-opt');
+        autoOpt.classList.toggle('hidden', isModule);
+        if (isModule && document.getElementById('ac-edit-icon-type').value === 'auto') {
+            document.getElementById('ac-edit-icon-type').value = 'fontawesome';
+        }
+        toggleIconInputs('ac-edit-icon-type', document.getElementById('ac-edit-icon-fa'), document.getElementById('ac-edit-icon-file'));
+    });
+
+    document.getElementById('ac-edit-icon-type').addEventListener('change', () => {
+        toggleIconInputs('ac-edit-icon-type', document.getElementById('ac-edit-icon-fa'), document.getElementById('ac-edit-icon-file'));
+    });
+
+    // Azioni CRUD
+    document.getElementById('ac-confirm-add').addEventListener('click', () => handleAppSave(false));
+    document.getElementById('ac-btn-save-edit').addEventListener('click', () => handleAppSave(true));
+
+    document.getElementById('ac-btn-delete').addEventListener('click', async () => {
         const msgEl = document.getElementById('ac-edit-msg');
         msgEl.innerText = "Eliminazione in corso...";
-        
         try {
             currentApps = currentApps.filter(app => app.id !== currentEditAppId);
             await syncAppsToGitHub("Rimozione app");
-            
             renderGrid();
             document.getElementById('ac-edit-app-modal').classList.add('hidden');
         } catch (err) {
@@ -273,84 +367,134 @@ function bindAdminEvents() {
 }
 
 async function loadUnregisteredModules() {
-    const select = document.getElementById('ac-module-select');
+    const select = document.getElementById('ac-add-target-module');
     try {
         const res = await fetch('mappa_file.json');
         const mapData = await res.json();
         
+        // Filtra moduli già in apps.json e quelli base di sistema
+        const registered = currentApps.filter(a => a.type === 'module').map(a => a.target);
+        const baseModules = ['actv', 'admin', 'app_container', 'calendar', 'contacts', 'links', 'list', 'notes', 'passwords', 'sensors'];
+        const excluded = [...baseModules, ...registered];
+
         const allModules = mapData.albero
             .filter(path => path.startsWith('js/modules/') && path.endsWith('.js'))
             .map(path => path.replace('js/modules/', '').replace('.js', ''))
-            .filter(m => !['actv', 'admin', 'app_container', 'calendar', 'contacts', 'links', 'list', 'notes', 'passwords', 'sensors'].includes(m));
+            .filter(m => !excluded.includes(m));
         
-        select.innerHTML = allModules.length === 0 
-            ? '<option value="">Nessun modulo nuovo trovato</option>' 
-            : allModules.map(m => `<option value="${m}">${m}</option>`).join('');
+        let options = allModules.map(m => `<option value="${m}">${m}</option>`).join('');
+        options += `<option value="manual">-- Inserisci nome manualmente --</option>`;
+        select.innerHTML = options;
     } catch (err) {
-        select.innerHTML = '<option value="">Errore caricamento mappa</option>';
+        select.innerHTML = `<option value="manual">-- Inserisci nome manualmente --</option>`;
     }
 }
 
-async function handleAppRegistration() {
+async function handleAppSave(isEdit) {
     if (!githubPat) return alert("Inserisci prima il token PAT cliccando sull'icona a chiave!");
 
-    const type = document.getElementById('ac-add-type').value;
-    const name = document.getElementById('ac-app-name').value.trim();
-    const icon = document.getElementById('ac-app-icon').value.trim();
-    const target = type === 'module' ? document.getElementById('ac-module-select').value : document.getElementById('ac-link-url').value.trim();
-    const msgEl = document.getElementById('ac-add-msg');
+    const prefix = isEdit ? 'ac-edit' : 'ac-add';
+    const type = document.getElementById(`${prefix}-type`).value;
+    const name = document.getElementById(`${prefix}-name`).value.trim();
+    const iconType = document.getElementById(`${prefix}-icon-type`).value;
+    const msgEl = document.getElementById(`${prefix}-msg`);
+    
+    let target = '';
+    if (isEdit) {
+        target = document.getElementById(`ac-edit-target`).value.trim();
+    } else {
+        if (type === 'link') {
+            target = document.getElementById(`ac-add-target-link`).value.trim();
+        } else {
+            const selectVal = document.getElementById(`ac-add-target-module`).value;
+            target = selectVal === 'manual' ? document.getElementById(`ac-add-target-manual`).value.trim() : selectVal;
+        }
+    }
 
-    if (!name || !icon || !target) {
-        msgEl.innerText = "Compila tutti i campi.";
+    if (!name || !target) {
+        msgEl.innerText = "Compila Nome e Destinazione.";
         msgEl.style.color = "red";
         return;
     }
 
-    msgEl.innerText = "Registrazione in corso...";
+    msgEl.innerText = "Salvataggio in corso...";
     msgEl.style.color = "var(--text-primary)";
 
-    const newApp = {
-        id: 'app_' + Date.now(),
-        name: name,
-        type: type,
-        target: target,
-        icon: icon
-    };
-
     try {
-        currentApps.push(newApp);
-        await syncAppsToGitHub(`Aggiunta app: ${name}`);
+        let iconValue = '';
+        if (iconType === 'fontawesome') {
+            iconValue = document.getElementById(`${prefix}-icon-fa`).value.trim();
+        } else if (iconType === 'custom') {
+            const fileInput = document.getElementById(`${prefix}-icon-file`);
+            if (fileInput.files.length > 0) {
+                msgEl.innerText = "Caricamento PNG su GitHub in corso...";
+                iconValue = await uploadIconToGitHub(fileInput.files[0]);
+            } else if (isEdit) {
+                // Mantiene la vecchia icona se non ne carica una nuova
+                const oldApp = currentApps.find(a => a.id === currentEditAppId);
+                iconValue = oldApp.iconValue;
+            } else {
+                throw new Error("Seleziona un'immagine PNG da caricare.");
+            }
+        }
+
+        const appObj = {
+            id: isEdit ? currentEditAppId : 'app_' + Date.now(),
+            name, type, target, iconType, iconValue
+        };
+
+        if (isEdit) {
+            const idx = currentApps.findIndex(a => a.id === currentEditAppId);
+            currentApps[idx] = appObj;
+        } else {
+            currentApps.push(appObj);
+        }
+
+        msgEl.innerText = "Sincronizzazione assets/apps.json in corso...";
+        await syncAppsToGitHub(`${isEdit ? 'Modifica' : 'Aggiunta'} app: ${name}`);
         
         renderGrid();
         
-        document.getElementById('ac-app-name').value = '';
-        document.getElementById('ac-app-icon').value = '';
-        if(type === 'link') document.getElementById('ac-link-url').value = '';
-        
-        msgEl.innerText = "App aggiunta con successo!";
+        msgEl.innerText = "Operazione completata!";
         msgEl.style.color = "var(--accent-color)";
-        setTimeout(() => document.getElementById('ac-add-modal').classList.add('hidden'), 1500);
+        setTimeout(() => document.getElementById(`${prefix}-modal`).classList.add('hidden'), 1500);
 
     } catch (err) {
-        msgEl.innerText = err.message || "Errore durante la comunicazione con GitHub.";
+        msgEl.innerText = err.message || "Errore durante l'operazione.";
         msgEl.style.color = "red";
-        currentApps.pop(); 
     }
 }
 
+async function uploadIconToGitHub(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = async () => {
+            const base64Content = reader.result.split(',')[1];
+            const filename = `icon_${Date.now()}.png`;
+            const path = `assets/icons/${filename}`;
+            try {
+                await commitGitHubFile(path, null, base64Content, `Upload icona: ${filename}`);
+                resolve(path);
+            } catch (e) {
+                reject(new Error("Errore upload immagine su GitHub"));
+            }
+        };
+        reader.onerror = () => reject(new Error("Errore lettura file"));
+        reader.readAsDataURL(file);
+    });
+}
+
 async function syncAppsToGitHub(commitMsg) {
-    if (!githubPat) throw new Error('Token mancante');
-    
     let sha = null;
     try {
-        const fileData = await fetchGitHubFileInfo('apps.json');
+        const fileData = await fetchGitHubFileInfo(APPS_FILE_PATH);
         if (fileData) sha = fileData.sha;
     } catch (e) {}
 
     const updatedContent = JSON.stringify(currentApps, null, 4);
     const newContentBase64 = btoa(unescape(encodeURIComponent(updatedContent)));
     
-    await commitGitHubFile('apps.json', sha, newContentBase64, commitMsg);
+    await commitGitHubFile(APPS_FILE_PATH, sha, newContentBase64, commitMsg);
 }
 
 async function fetchGitHubFileInfo(path) {
@@ -363,7 +507,7 @@ async function fetchGitHubFileInfo(path) {
 
 async function commitGitHubFile(path, sha, base64Content, message) {
     const url = `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/${path}`;
-    const bodyData = { message: message, content: base64Content, branch: GH_BRANCH };
+    const bodyData = { message, content: base64Content, branch: GH_BRANCH };
     if (sha) bodyData.sha = sha; 
     
     const response = await fetch(url, {
