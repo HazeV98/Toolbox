@@ -21,6 +21,6 @@
         "type": "module",
         "target": "migraine",
         "iconType": "fontawesome",
-        "iconValue": "fas fa-head"
+        "iconValue": "fas fa-brain"
     }
 ]
