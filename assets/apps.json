@@ -13,6 +13,6 @@
         "type": "module",
         "target": "sensors",
         "iconType": "fontawesome",
-        "iconValue": "fa-regular fa-wrench"
+        "iconValue": "fas fa-regular fa-wrench"
     }
 ]
