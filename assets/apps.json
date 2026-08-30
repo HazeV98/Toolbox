@@ -1,1 +1,10 @@
-[]
+[
+    {
+        "id": "app_1788052036138",
+        "name": "BateoLive",
+        "type": "link",
+        "target": "https://bateolive.tailec23c3.ts.net/",
+        "iconType": "custom",
+        "iconValue": "assets/icons/icon_1788052032042.png"
+    }
+]
