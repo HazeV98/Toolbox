@@ -115,9 +115,19 @@ function injectStyles() {
         .migraine-input { width: 100%; padding: 0.5rem; border: 1px solid var(--border-soft); border-radius: 6px; background: var(--surface-light); color: var(--text-primary); }
         textarea.migraine-input { resize: vertical; min-height: 60px; }
         
-        /* Farmaci */
-        .med-chip { background: var(--border-soft); border-radius: 12px; padding: 4px 10px; font-size: 0.8rem; cursor: pointer; transition: background 0.2s; border: 1px solid transparent; display: inline-block;}
-        .med-chip:hover { border-color: var(--accent-color); background: rgba(150,150,150,0.1); }
+        /* Accordions and Chips */
+        .migraine-accordion { background: rgba(150,150,150,0.02); border: 1px solid var(--border-soft); border-radius: 8px; margin-bottom: 0.5rem; }
+        .migraine-accordion-header { padding: 0.8rem; display: flex; justify-content: space-between; align-items: center; cursor: pointer; font-weight: bold; font-size: 0.9rem; }
+        .migraine-accordion-header .chevron { transition: transform 0.3s; color: var(--text-secondary); }
+        .migraine-accordion.open .chevron { transform: rotate(-180deg); }
+        .migraine-accordion-content { display: none; padding: 0 0.8rem 0.8rem 0.8rem; flex-direction: column; gap: 0.8rem; }
+        .migraine-accordion.open .migraine-accordion-content { display: flex; }
+        
+        .chip-group { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+        .selectable-chip { background: var(--surface-light); border: 1px solid var(--border-soft); border-radius: 16px; padding: 5px 12px; font-size: 0.85rem; cursor: pointer; transition: all 0.2s; user-select: none; }
+        .selectable-chip.selected { background: #ef4444; color: white; border-color: #ef4444; }
+        .selectable-chip.med-chip { background: rgba(150,150,150,0.1); }
+        
         .med-row { display: flex; justify-content: space-between; align-items: center; padding: 0.5rem; background: rgba(150,150,150,0.05); border-radius: 6px; }
     `;
     document.head.appendChild(style);
@@ -235,7 +245,7 @@ function buildModalsToBody() {
             </div>
         </div>
 
-        <!-- MODALE AGGIUNGI / MODIFICA EPISODIO -->
+        <!-- MODALE AGGIUNGI / MODIFICA EPISODIO (Aggiornato con sezioni collassabili) -->
         <div id="cal-add-modal" class="modal-overlay hidden" style="z-index: 2200;">
             <div class="modal-content" style="max-height: 90vh; overflow-y: auto;">
                 <div class="modal-header">
@@ -246,46 +256,120 @@ function buildModalsToBody() {
                 <input type="hidden" id="add-date">
                 <input type="hidden" id="edit-entry-id">
 
-                <div style="display:flex; gap:0.5rem; margin-bottom: 0.8rem;">
-                    <div class="migraine-form-group" style="flex:1;">
+                <div style="display:flex; gap:0.5rem; margin-bottom: 1rem;">
+                    <div class="migraine-form-group" style="flex:1; margin-bottom:0;">
                         <label>Ora Inizio</label>
                         <input type="time" id="add-start" class="migraine-input">
                     </div>
-                    <div class="migraine-form-group" style="flex:1;">
+                    <div class="migraine-form-group" style="flex:1; margin-bottom:0;">
                         <label>Ora Fine</label>
                         <input type="time" id="add-end" class="migraine-input">
                     </div>
                 </div>
 
-                <div class="migraine-form-group">
-                    <label>Intensità Dolore (1-10)</label>
-                    <input type="number" id="add-intensity" min="1" max="10" placeholder="Es. 7" class="migraine-input">
+                <!-- Intensità -->
+                <div class="migraine-accordion">
+                    <div class="migraine-accordion-header">
+                        <span>Intensità (1-10)</span>
+                        <span class="material-symbols-outlined chevron">expand_more</span>
+                    </div>
+                    <div class="migraine-accordion-content">
+                        <div class="chip-group" id="chips-intensity">
+                            ${[1,2,3,4,5,6,7,8,9,10].map(n => `<div class="selectable-chip single-select">${n}</div>`).join('')}
+                        </div>
+                    </div>
                 </div>
 
-                <div class="migraine-form-group">
-                    <label>Localizzazione e Tipo di Dolore</label>
-                    <input type="text" id="add-location" placeholder="Es. Pulsante tempia destra" class="migraine-input">
-                </div>
-                
-                <div class="migraine-form-group">
-                    <label>Sintomi e Preavviso (Aura, Nausea, Fotofobia...)</label>
-                    <input type="text" id="add-symptoms" placeholder="Es. Nausea, fastidio luce" class="migraine-input">
+                <!-- Localizzazione -->
+                <div class="migraine-accordion">
+                    <div class="migraine-accordion-header">
+                        <span>Localizzazione e Tipo Dolore</span>
+                        <span class="material-symbols-outlined chevron">expand_more</span>
+                    </div>
+                    <div class="migraine-accordion-content">
+                        <div class="chip-group" id="chips-location">
+                            <div class="selectable-chip">Tempia Dx</div>
+                            <div class="selectable-chip">Tempia Sx</div>
+                            <div class="selectable-chip">Fronte</div>
+                            <div class="selectable-chip">Nuca</div>
+                            <div class="selectable-chip">Occhi</div>
+                            <div class="selectable-chip">Diffuso</div>
+                            <div class="selectable-chip">Pulsante</div>
+                            <div class="selectable-chip">Oppressivo</div>
+                            <div class="selectable-chip">Trafiggente</div>
+                        </div>
+                        <input type="text" id="add-location-other" placeholder="Altra localizzazione o tipo..." class="migraine-input">
+                    </div>
                 </div>
 
-                <div class="migraine-form-group">
-                    <label>Fattori Scatenanti (Trigger)</label>
-                    <input type="text" id="add-triggers" placeholder="Es. Poco sonno, stress" class="migraine-input">
+                <!-- Sintomi e Preavviso -->
+                <div class="migraine-accordion">
+                    <div class="migraine-accordion-header">
+                        <span>Sintomi e Preavviso</span>
+                        <span class="material-symbols-outlined chevron">expand_more</span>
+                    </div>
+                    <div class="migraine-accordion-content">
+                        <div class="chip-group" id="chips-symptoms">
+                            <div class="selectable-chip">Nausea</div>
+                            <div class="selectable-chip">Vomito</div>
+                            <div class="selectable-chip">Fotofobia (Luce)</div>
+                            <div class="selectable-chip">Fonofobia (Suoni)</div>
+                            <div class="selectable-chip">Osmofobia (Odori)</div>
+                            <div class="selectable-chip">Aura visiva</div>
+                            <div class="selectable-chip">Stanchezza</div>
+                            <div class="selectable-chip">Sbadigli frequenti</div>
+                            <div class="selectable-chip">Formicolio</div>
+                            <div class="selectable-chip">Difficoltà concentrazione</div>
+                        </div>
+                        <input type="text" id="add-symptoms-other" placeholder="Altri sintomi..." class="migraine-input">
+                    </div>
                 </div>
 
-                <div class="migraine-form-group">
-                    <label>Farmaci Assunti ed Efficacia</label>
-                    <div id="quick-meds-container" style="display:flex; gap:0.3rem; flex-wrap:wrap; margin-bottom:0.5rem;"></div>
-                    <input type="text" id="add-meds" placeholder="Es. Triptano, dolore passato dopo 2h" class="migraine-input">
+                <!-- Fattori Scatenanti -->
+                <div class="migraine-accordion">
+                    <div class="migraine-accordion-header">
+                        <span>Fattori Scatenanti (Trigger)</span>
+                        <span class="material-symbols-outlined chevron">expand_more</span>
+                    </div>
+                    <div class="migraine-accordion-content">
+                        <div class="chip-group" id="chips-triggers">
+                            <div class="selectable-chip">Stress</div>
+                            <div class="selectable-chip">Poco sonno</div>
+                            <div class="selectable-chip">Troppo sonno</div>
+                            <div class="selectable-chip">Sbalzo termico/Meteo</div>
+                            <div class="selectable-chip">Ciclo mestruale</div>
+                            <div class="selectable-chip">Alcol</div>
+                            <div class="selectable-chip">Caffeina (eccesso/astinenza)</div>
+                            <div class="selectable-chip">Digiuno</div>
+                            <div class="selectable-chip">Sforzo fisico</div>
+                        </div>
+                        <input type="text" id="add-triggers-other" placeholder="Altri fattori scatenanti..." class="migraine-input">
+                    </div>
                 </div>
 
-                <div class="migraine-form-group">
-                    <label>Note aggiuntive (Impatto sulle attività...)</label>
-                    <textarea id="add-notes" placeholder="Eventuali annotazioni libere" class="migraine-input"></textarea>
+                <!-- Farmaci -->
+                <div class="migraine-accordion">
+                    <div class="migraine-accordion-header">
+                        <span>Farmaci Assunti</span>
+                        <span class="material-symbols-outlined chevron">expand_more</span>
+                    </div>
+                    <div class="migraine-accordion-content">
+                        <div class="chip-group" id="quick-meds-container">
+                            <!-- Farmaci dinamici -->
+                        </div>
+                        <input type="text" id="add-meds-other" placeholder="Es. Dolore passato dopo 2h..." class="migraine-input">
+                    </div>
+                </div>
+
+                <!-- Note -->
+                <div class="migraine-accordion">
+                    <div class="migraine-accordion-header">
+                        <span>Note Aggiuntive</span>
+                        <span class="material-symbols-outlined chevron">expand_more</span>
+                    </div>
+                    <div class="migraine-accordion-content">
+                        <textarea id="add-notes" placeholder="Impatto sulle attività, annotazioni libere..." class="migraine-input"></textarea>
+                    </div>
                 </div>
 
                 <button id="btn-save-entry" class="btn primary" style="width:100%; margin-top:1rem;">Salva Episodio</button>
@@ -309,7 +393,6 @@ function initDataListeners() {
             entries.push({id: d.id, ...d.data()});
         });
         
-        // Aggiorna modale giorno se aperto
         const addDateInput = document.getElementById('add-date');
         if (addDateInput) {
             const dateStr = addDateInput.value;
@@ -333,6 +416,57 @@ function initDataListeners() {
         renderQuickMeds();
     });
 }
+
+// --- FUNZIONI UTILI PER LETTURA/SCRITTURA DELLE CATEGORIE CON CHIP ---
+function getCategoryData(containerId, otherInputId) {
+    let selected = [];
+    const container = document.getElementById(containerId);
+    if (container) {
+        container.querySelectorAll('.selectable-chip.selected').forEach(c => {
+            selected.push(c.innerText);
+        });
+    }
+    if (otherInputId) {
+        const other = document.getElementById(otherInputId);
+        if (other && other.value.trim() !== '') {
+            selected.push(other.value.trim());
+        }
+    }
+    return selected.join(', ');
+}
+
+function setCategoryData(containerId, otherInputId, fullString) {
+    const container = document.getElementById(containerId);
+    const otherInput = document.getElementById(otherInputId);
+    
+    if (container) {
+        container.querySelectorAll('.selectable-chip').forEach(c => c.classList.remove('selected'));
+    }
+    if (otherInput) otherInput.value = '';
+    
+    if (!fullString) return;
+    
+    let parts = fullString.split(',').map(s => s.trim());
+    let leftovers = [];
+    
+    parts.forEach(part => {
+        let found = false;
+        if (container) {
+            container.querySelectorAll('.selectable-chip').forEach(chip => {
+                if (chip.innerText === part) {
+                    chip.classList.add('selected');
+                    found = true;
+                }
+            });
+        }
+        if (!found && part !== '') leftovers.push(part);
+    });
+    
+    if (otherInput && leftovers.length > 0) {
+        otherInput.value = leftovers.join(', ');
+    }
+}
+
 
 // --- RENDERING CALENDARIO CON PUNTINI ---
 function renderCalendar() {
@@ -375,7 +509,6 @@ function renderCalendar() {
         const dayInfo = getDayInfo(i, month + 1, year);
         let holiMarker = dayInfo.festa ? `<span style="color:#ef4444; font-size:1.2rem; line-height:0.5; vertical-align: middle;">•</span>` : '';
 
-        // Mostra pallino rosso se ci sono episodi
         const dayEntries = entries.filter(e => e.date === dateStr);
         let dotsHtml = '<div class="cal-dots-container">';
         if (dayEntries.length > 0) {
@@ -406,7 +539,6 @@ function openDayDetails(dateStr) {
     
     const dayEntries = entries.filter(e => e.date === dateStr);
     
-    // Ordina per ora
     dayEntries.sort((a,b) => {
         if (!a.startTime) return -1;
         if (!b.startTime) return 1;
@@ -456,15 +588,19 @@ function openDayDetails(dateStr) {
                 document.getElementById('edit-entry-id').value = entry.id;
                 document.getElementById('add-date').value = entry.date;
                 
-                // Popola i campi
                 document.getElementById('add-start').value = entry.startTime || '';
                 document.getElementById('add-end').value = entry.endTime || '';
-                document.getElementById('add-intensity').value = entry.intensity || '';
-                document.getElementById('add-location').value = entry.location || '';
-                document.getElementById('add-symptoms').value = entry.symptoms || '';
-                document.getElementById('add-triggers').value = entry.triggers || '';
-                document.getElementById('add-meds').value = entry.meds || '';
+                
+                // Popola i campi tramite la funzione di set
+                setCategoryData('chips-intensity', null, entry.intensity);
+                setCategoryData('chips-location', 'add-location-other', entry.location);
+                setCategoryData('chips-symptoms', 'add-symptoms-other', entry.symptoms);
+                setCategoryData('chips-triggers', 'add-triggers-other', entry.triggers);
+                setCategoryData('quick-meds-container', 'add-meds-other', entry.meds);
                 document.getElementById('add-notes').value = entry.notes || '';
+                
+                // Chiudi tutte le schede per pulizia visiva
+                document.querySelectorAll('.migraine-accordion').forEach(acc => acc.classList.remove('open'));
 
                 document.getElementById('add-modal-title').innerText = "Modifica Episodio";
                 
@@ -525,23 +661,23 @@ function renderQuickMeds() {
     if (!cont) return;
     cont.innerHTML = '';
     
+    if (savedMeds.length === 0) {
+        cont.innerHTML = '<span style="font-size:0.8rem; color:var(--text-secondary);">Nessun farmaco configurato. Aggiungili dalle Opzioni Diario.</span>';
+        return;
+    }
+
     savedMeds.forEach(med => {
-        const chip = document.createElement('span');
-        chip.className = 'med-chip';
+        const chip = document.createElement('div');
+        chip.className = 'selectable-chip med-chip';
         chip.innerText = `${med.name} ${med.dosage ? '('+med.dosage+')' : ''}`;
-        
-        chip.addEventListener('click', () => {
-            const input = document.getElementById('add-meds');
-            const currentVal = input.value.trim();
-            const textToAdd = chip.innerText;
-            if (currentVal) {
-                input.value = currentVal + ', ' + textToAdd;
-            } else {
-                input.value = textToAdd;
-            }
-        });
-        
         cont.appendChild(chip);
+    });
+    
+    // Ripetiamo il binding del click per i chip appena creati dinamicamente
+    cont.querySelectorAll('.selectable-chip').forEach(chip => {
+        chip.addEventListener('click', () => {
+            chip.classList.toggle('selected');
+        });
     });
 }
 
@@ -559,6 +695,25 @@ function bindModalEvents() {
     document.getElementById('btn-close-add').addEventListener('click', () => document.getElementById('cal-add-modal').classList.add('hidden'));
     document.getElementById('btn-close-day-details').addEventListener('click', () => document.getElementById('cal-day-details-modal').classList.add('hidden'));
     
+    // Gestione Accordion e Chip Generici (Statici)
+    document.querySelectorAll('.migraine-accordion-header').forEach(header => {
+        header.addEventListener('click', () => {
+            header.parentElement.classList.toggle('open');
+        });
+    });
+
+    document.querySelectorAll('.selectable-chip').forEach(chip => {
+        chip.addEventListener('click', () => {
+            // Se è a selezione singola (es. intensità), deseleziona gli altri nel suo gruppo
+            if (chip.classList.contains('single-select')) {
+                chip.parentElement.querySelectorAll('.single-select').forEach(c => c.classList.remove('selected'));
+                chip.classList.add('selected');
+            } else {
+                chip.classList.toggle('selected');
+            }
+        });
+    });
+
     // GESTIONE FARMACI MODALE
     document.getElementById('btn-open-meds').addEventListener('click', () => {
         document.getElementById('cal-meds-modal').classList.remove('hidden');
@@ -583,19 +738,23 @@ function bindModalEvents() {
         }
     });
 
-    // Apre la finestra di aggiunta nuova (svuotando eventuali ID di modifica pregressi)
+    // Apre la finestra di aggiunta nuova
     document.getElementById('btn-add-from-day').addEventListener('click', () => {
         document.getElementById('edit-entry-id').value = ''; 
         
         // Svuota form
         document.getElementById('add-start').value = '';
         document.getElementById('add-end').value = '';
-        document.getElementById('add-intensity').value = '';
-        document.getElementById('add-location').value = '';
-        document.getElementById('add-symptoms').value = '';
-        document.getElementById('add-triggers').value = '';
-        document.getElementById('add-meds').value = '';
+        
+        setCategoryData('chips-intensity', null, '');
+        setCategoryData('chips-location', 'add-location-other', '');
+        setCategoryData('chips-symptoms', 'add-symptoms-other', '');
+        setCategoryData('chips-triggers', 'add-triggers-other', '');
+        setCategoryData('quick-meds-container', 'add-meds-other', '');
         document.getElementById('add-notes').value = '';
+
+        // Chiude gli accordion
+        document.querySelectorAll('.migraine-accordion').forEach(acc => acc.classList.remove('open'));
 
         document.getElementById('add-modal-title').innerText = "Registra Episodio";
         
@@ -625,9 +784,8 @@ function bindModalEvents() {
         if (!valFrom || !valTo) return alert("Seleziona il periodo di esportazione.");
         if (valFrom > valTo) return alert("Il mese di fine non può precedere quello di inizio.");
 
-        // Estrazione episodi nel range
         const epsToExport = entries.filter(e => {
-            const entryMonthStr = e.date.substring(0, 7); // Prende YYYY-MM
+            const entryMonthStr = e.date.substring(0, 7); 
             return entryMonthStr >= valFrom && entryMonthStr <= valTo;
         });
         
@@ -648,7 +806,6 @@ function bindModalEvents() {
             htmlContent += `<p style="text-align:center;">Nessun episodio registrato in questo periodo.</p>`;
         } else {
             epsToExport.forEach(ep => {
-                // Formatta la data
                 const [y, m, d] = ep.date.split('-');
                 
                 let timeStr = ep.startTime ? ep.startTime : 'N/D';
@@ -723,11 +880,11 @@ function bindModalEvents() {
             date: date,
             startTime: document.getElementById('add-start').value,
             endTime: document.getElementById('add-end').value,
-            intensity: document.getElementById('add-intensity').value,
-            location: document.getElementById('add-location').value.trim(),
-            symptoms: document.getElementById('add-symptoms').value.trim(),
-            triggers: document.getElementById('add-triggers').value.trim(),
-            meds: document.getElementById('add-meds').value.trim(),
+            intensity: getCategoryData('chips-intensity', null),
+            location: getCategoryData('chips-location', 'add-location-other'),
+            symptoms: getCategoryData('chips-symptoms', 'add-symptoms-other'),
+            triggers: getCategoryData('chips-triggers', 'add-triggers-other'),
+            meds: getCategoryData('quick-meds-container', 'add-meds-other'),
             notes: document.getElementById('add-notes').value.trim()
         };
 
