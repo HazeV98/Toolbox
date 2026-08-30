@@ -14,5 +14,13 @@
         "target": "sensors",
         "iconType": "fontawesome",
         "iconValue": "fas fa-regular fa-wrench"
+    },
+    {
+        "id": "app_1788075270789",
+        "name": "Diario emicrania",
+        "type": "module",
+        "target": "migraine",
+        "iconType": "fontawesome",
+        "iconValue": "fas fa-head"
     }
 ]
