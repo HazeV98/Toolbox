@@ -62,7 +62,7 @@ function buildMainUI() {
     containerEl.innerHTML = `
         <div class="module-wrapper" id="app-container-wrapper">
             <div class="ac-header">
-                <h2 style="margin:0; font-size:1.3rem;">Le Mie App</h2>
+                <h2 style="margin:0; font-size:1.3rem;">Applicazioni</h2>
                 ${adminControls}
             </div>
             <div class="app-grid" id="ac-app-grid">
