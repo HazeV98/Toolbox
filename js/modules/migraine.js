@@ -245,7 +245,7 @@ function buildModalsToBody() {
             </div>
         </div>
 
-        <!-- MODALE AGGIUNGI / MODIFICA EPISODIO (Aggiornato con sezioni collassabili) -->
+        <!-- MODALE AGGIUNGI / MODIFICA EPISODIO -->
         <div id="cal-add-modal" class="modal-overlay hidden" style="z-index: 2200;">
             <div class="modal-content" style="max-height: 90vh; overflow-y: auto;">
                 <div class="modal-header">
@@ -274,9 +274,8 @@ function buildModalsToBody() {
                         <span class="material-symbols-outlined chevron">expand_more</span>
                     </div>
                     <div class="migraine-accordion-content">
-                        <div class="chip-group" id="chips-intensity">
-                            ${[1,2,3,4,5,6,7,8,9,10].map(n => `<div class="selectable-chip single-select">${n}</div>`).join('')}
-                        </div>
+                        <input type="range" id="add-intensity" min="1" max="10" value="5" class="migraine-input" style="padding:0;">
+                        <div style="text-align:center; font-weight:bold;">Valore: <span id="intensity-val">5</span></div>
                     </div>
                 </div>
 
@@ -350,7 +349,7 @@ function buildModalsToBody() {
                 <!-- Farmaci -->
                 <div class="migraine-accordion">
                     <div class="migraine-accordion-header">
-                        <span>Farmaci Assunti</span>
+                        <span>Farmaci Assunti ed Efficacia</span>
                         <span class="material-symbols-outlined chevron">expand_more</span>
                     </div>
                     <div class="migraine-accordion-content">
@@ -358,6 +357,11 @@ function buildModalsToBody() {
                             <!-- Farmaci dinamici -->
                         </div>
                         <input type="text" id="add-meds-other" placeholder="Es. Dolore passato dopo 2h..." class="migraine-input">
+                        <div style="margin-top: 0.5rem;">
+                            <label style="display:block; font-size:0.8rem; color:var(--text-secondary); margin-bottom:0.2rem;">Efficacia del medicinale (1-10)</label>
+                            <input type="range" id="add-med-efficacy" min="1" max="10" value="5" class="migraine-input" style="padding:0;">
+                            <div style="text-align:center; font-weight:bold;">Valore: <span id="efficacy-val">5</span></div>
+                        </div>
                     </div>
                 </div>
 
@@ -557,6 +561,7 @@ function openDayDetails(dateStr) {
             
             let summaryStr = [];
             if (entry.intensity) summaryStr.push(`Intensità: ${entry.intensity}`);
+            if (entry.medEfficacy) summaryStr.push(`Efficacia: ${entry.medEfficacy}`);
             if (entry.location) summaryStr.push(entry.location);
             
             let actionsHtml = `
@@ -592,7 +597,14 @@ function openDayDetails(dateStr) {
                 document.getElementById('add-end').value = entry.endTime || '';
                 
                 // Popola i campi tramite la funzione di set
-                setCategoryData('chips-intensity', null, entry.intensity);
+                const intInput = document.getElementById('add-intensity');
+                intInput.value = entry.intensity || 5;
+                document.getElementById('intensity-val').innerText = intInput.value;
+
+                const effInput = document.getElementById('add-med-efficacy');
+                effInput.value = entry.medEfficacy || 5;
+                document.getElementById('efficacy-val').innerText = effInput.value;
+
                 setCategoryData('chips-location', 'add-location-other', entry.location);
                 setCategoryData('chips-symptoms', 'add-symptoms-other', entry.symptoms);
                 setCategoryData('chips-triggers', 'add-triggers-other', entry.triggers);
@@ -691,6 +703,14 @@ function bindCalendarEvents() {
 
 // --- EVENTI MODALI ---
 function bindModalEvents() {
+    // Gestione input range per Intensità ed Efficacia
+    document.getElementById('add-intensity').addEventListener('input', (e) => {
+        document.getElementById('intensity-val').innerText = e.target.value;
+    });
+    document.getElementById('add-med-efficacy').addEventListener('input', (e) => {
+        document.getElementById('efficacy-val').innerText = e.target.value;
+    });
+
     document.getElementById('btn-close-menu').addEventListener('click', () => document.getElementById('cal-menu-modal').classList.add('hidden'));
     document.getElementById('btn-close-add').addEventListener('click', () => document.getElementById('cal-add-modal').classList.add('hidden'));
     document.getElementById('btn-close-day-details').addEventListener('click', () => document.getElementById('cal-day-details-modal').classList.add('hidden'));
@@ -746,7 +766,11 @@ function bindModalEvents() {
         document.getElementById('add-start').value = '';
         document.getElementById('add-end').value = '';
         
-        setCategoryData('chips-intensity', null, '');
+        document.getElementById('add-intensity').value = 5;
+        document.getElementById('intensity-val').innerText = 5;
+        document.getElementById('add-med-efficacy').value = 5;
+        document.getElementById('efficacy-val').innerText = 5;
+
         setCategoryData('chips-location', 'add-location-other', '');
         setCategoryData('chips-symptoms', 'add-symptoms-other', '');
         setCategoryData('chips-triggers', 'add-triggers-other', '');
@@ -819,6 +843,7 @@ function bindModalEvents() {
                         </div>
                         <table style="width:100%; font-size:13px; line-height:1.5;">
                             ${ep.intensity ? `<tr><td style="width:30%; font-weight:bold; color:#475569;">Intensità:</td><td>${ep.intensity} / 10</td></tr>` : ''}
+                            ${ep.medEfficacy ? `<tr><td style="font-weight:bold; color:#475569;">Efficacia Farmaco:</td><td>${ep.medEfficacy} / 10</td></tr>` : ''}
                             ${ep.location ? `<tr><td style="font-weight:bold; color:#475569;">Localizzazione/Tipo:</td><td>${ep.location}</td></tr>` : ''}
                             ${ep.symptoms ? `<tr><td style="font-weight:bold; color:#475569;">Sintomi/Preavviso:</td><td>${ep.symptoms}</td></tr>` : ''}
                             ${ep.triggers ? `<tr><td style="font-weight:bold; color:#475569;">Fattori Scatenanti:</td><td>${ep.triggers}</td></tr>` : ''}
@@ -880,7 +905,8 @@ function bindModalEvents() {
             date: date,
             startTime: document.getElementById('add-start').value,
             endTime: document.getElementById('add-end').value,
-            intensity: getCategoryData('chips-intensity', null),
+            intensity: document.getElementById('add-intensity').value,
+            medEfficacy: document.getElementById('add-med-efficacy').value,
             location: getCategoryData('chips-location', 'add-location-other'),
             symptoms: getCategoryData('chips-symptoms', 'add-symptoms-other'),
             triggers: getCategoryData('chips-triggers', 'add-triggers-other'),
