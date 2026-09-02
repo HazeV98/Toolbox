@@ -177,9 +177,46 @@ function buildModalsToBody() {
                     <button id="btn-open-meds" class="btn secondary outline" style="width:100%; margin-bottom:0.5rem;">
                         <span class="material-symbols-outlined" style="vertical-align:middle; margin-right:5px;">vaccines</span> Gestisci Farmaci
                     </button>
+                    <button id="btn-open-stats" class="btn secondary outline" style="width:100%; margin-bottom:0.5rem;">
+                        <span class="material-symbols-outlined" style="vertical-align:middle; margin-right:5px;">bar_chart</span> Statistiche
+                    </button>
                     <button id="btn-open-export" class="btn secondary outline" style="width:100%; margin-bottom:1rem; border-color:var(--accent-color); color:var(--accent-color);">
                         <span class="material-symbols-outlined" style="vertical-align:middle; margin-right:5px;">picture_as_pdf</span> Esporta Diario PDF
                     </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- MODALE STATISTICHE -->
+        <div id="cal-stats-modal" class="modal-overlay hidden" style="z-index: 2050;">
+            <div class="modal-content" style="max-height: 90vh; overflow-y: auto;">
+                <div class="modal-header">
+                    <h2>Statistiche</h2>
+                    <button id="btn-close-stats" class="icon-btn"><span class="material-symbols-outlined">close</span></button>
+                </div>
+                <div style="margin-bottom: 1rem;">
+                    <label style="font-size:0.8rem; display:block; margin-bottom:0.3rem;">Seleziona Periodo:</label>
+                    <select id="stats-period-type" class="migraine-input" style="margin-bottom: 0.5rem;">
+                        <option value="month">Mese specifico</option>
+                        <option value="year">Anno specifico</option>
+                        <option value="custom">Periodo personalizzato</option>
+                    </select>
+                    
+                    <div id="stats-inputs-month" class="stats-input-group">
+                        <input type="month" id="stats-month" class="migraine-input">
+                    </div>
+                    <div id="stats-inputs-year" class="stats-input-group" style="display:none;">
+                        <input type="number" id="stats-year" placeholder="Es. 2026" class="migraine-input" min="2000" max="2100">
+                    </div>
+                    <div id="stats-inputs-custom" class="stats-input-group" style="display:none; gap:0.5rem;">
+                        <input type="date" id="stats-date-from" class="migraine-input" style="flex:1;">
+                        <input type="date" id="stats-date-to" class="migraine-input" style="flex:1;">
+                    </div>
+                    
+                    <button id="btn-calc-stats" class="btn primary" style="width:100%; margin-top: 0.8rem;">Calcola Statistiche</button>
+                </div>
+                <div id="stats-results" style="display:flex; flex-direction:column; gap:1rem;">
+                    <!-- Risultati generati qui -->
                 </div>
             </div>
         </div>
@@ -756,6 +793,135 @@ function bindModalEvents() {
             console.error(e);
             alert("Errore salvataggio farmaco.");
         }
+    });
+
+    // GESTIONE STATISTICHE MODALE
+    document.getElementById('btn-open-stats').addEventListener('click', () => {
+        const mm = String(currentDate.getMonth() + 1).padStart(2, '0');
+        const yyyy = currentDate.getFullYear();
+        document.getElementById('stats-month').value = `${yyyy}-${mm}`;
+        document.getElementById('stats-year').value = yyyy;
+        
+        document.getElementById('cal-stats-modal').classList.remove('hidden');
+        document.getElementById('cal-menu-modal').classList.add('hidden');
+        document.getElementById('stats-results').innerHTML = ''; 
+    });
+
+    document.getElementById('btn-close-stats').addEventListener('click', () => {
+        document.getElementById('cal-stats-modal').classList.add('hidden');
+    });
+
+    document.getElementById('stats-period-type').addEventListener('change', (e) => {
+        document.getElementById('stats-inputs-month').style.display = 'none';
+        document.getElementById('stats-inputs-year').style.display = 'none';
+        document.getElementById('stats-inputs-custom').style.display = 'none';
+        
+        if(e.target.value === 'month') document.getElementById('stats-inputs-month').style.display = 'block';
+        if(e.target.value === 'year') document.getElementById('stats-inputs-year').style.display = 'block';
+        if(e.target.value === 'custom') document.getElementById('stats-inputs-custom').style.display = 'flex';
+    });
+
+    document.getElementById('btn-calc-stats').addEventListener('click', () => {
+        const periodType = document.getElementById('stats-period-type').value;
+        let filtered = [];
+
+        if (periodType === 'month') {
+            const val = document.getElementById('stats-month').value;
+            if (!val) return alert("Seleziona un mese.");
+            filtered = entries.filter(e => e.date.startsWith(val));
+        } else if (periodType === 'year') {
+            const val = document.getElementById('stats-year').value;
+            if (!val) return alert("Inserisci un anno.");
+            filtered = entries.filter(e => e.date.startsWith(val));
+        } else if (periodType === 'custom') {
+            const from = document.getElementById('stats-date-from').value;
+            const to = document.getElementById('stats-date-to').value;
+            if (!from || !to) return alert("Seleziona data di inizio e fine.");
+            if (from > to) return alert("La data di inizio non può superare la data di fine.");
+            filtered = entries.filter(e => e.date >= from && e.date <= to);
+        }
+
+        const resContainer = document.getElementById('stats-results');
+        if (filtered.length === 0) {
+            resContainer.innerHTML = '<p style="text-align:center; color:var(--text-secondary);">Nessun episodio in questo periodo.</p>';
+            return;
+        }
+
+        const total = filtered.length;
+        
+        let intensityCounts = {};
+        let medsTakenCount = 0;
+        let locations = {};
+        let symptoms = {};
+        let triggers = {};
+
+        filtered.forEach(e => {
+            if(e.intensity) {
+                intensityCounts[e.intensity] = (intensityCounts[e.intensity] || 0) + 1;
+            }
+            
+            if (e.meds && e.meds.trim() !== '') {
+                const mList = e.meds.split(',').filter(x => x.trim() !== '');
+                medsTakenCount += mList.length;
+            }
+
+            const countItems = (str, targetObj) => {
+                if (!str) return;
+                str.split(',').forEach(item => {
+                    let val = item.trim();
+                    if(val !== '') targetObj[val] = (targetObj[val] || 0) + 1;
+                });
+            };
+
+            countItems(e.location, locations);
+            countItems(e.symptoms, symptoms);
+            countItems(e.triggers, triggers);
+        });
+
+        const renderBar = (label, count, maxVal) => {
+            const pct = Math.round((count / Math.max(maxVal, 1)) * 100);
+            return `
+                <div style="margin-bottom: 4px; font-size: 0.85rem; display:flex; justify-content:space-between;">
+                    <span>${label}</span>
+                    <span>${count} (${pct}%)</span>
+                </div>
+                <div style="width: 100%; background: var(--border-soft); height: 6px; border-radius: 3px; margin-bottom: 8px;">
+                    <div style="width: ${pct}%; background: var(--accent-color, #ef4444); height: 100%; border-radius: 3px;"></div>
+                </div>
+            `;
+        };
+
+        const generateSectionHtml = (title, dataObj, totalReference) => {
+            const keys = Object.keys(dataObj).sort((a,b) => dataObj[b] - dataObj[a]);
+            if(keys.length === 0) return '';
+            let html = `<div style="background: rgba(150,150,150,0.05); padding: 10px; border-radius: 8px; margin-bottom: 10px;">
+                            <strong style="display:block; margin-bottom: 8px;">${title}</strong>`;
+            keys.forEach(k => {
+                html += renderBar(k, dataObj[k], totalReference);
+            });
+            html += `</div>`;
+            return html;
+        };
+
+        let html = `
+            <div style="display:flex; gap:0.5rem; justify-content:center;">
+                <div style="flex:1; text-align:center; padding: 10px; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 8px;">
+                    <h3 style="margin: 0; color: #ef4444;">${total}</h3>
+                    <span style="font-size:0.8rem;">Episodi Totali</span>
+                </div>
+                <div style="flex:1; text-align:center; padding: 10px; background: rgba(150, 150, 150, 0.1); border: 1px solid var(--border-soft); border-radius: 8px;">
+                    <h3 style="margin: 0;">${medsTakenCount}</h3>
+                    <span style="font-size:0.8rem;">Farmaci Assunti</span>
+                </div>
+            </div>
+        `;
+
+        html += generateSectionHtml("Intensità Registrate", intensityCounts, total);
+        html += generateSectionHtml("Localizzazione e Tipo", locations, total);
+        html += generateSectionHtml("Sintomi e Preavviso", symptoms, total);
+        html += generateSectionHtml("Fattori Scatenanti", triggers, total);
+
+        resContainer.innerHTML = html;
     });
 
     // Apre la finestra di aggiunta nuova
