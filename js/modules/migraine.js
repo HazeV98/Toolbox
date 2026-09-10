@@ -246,7 +246,7 @@ function buildModalsToBody() {
                     <h2>Esporta in PDF</h2>
                     <button id="btn-close-export" class="icon-btn"><span class="material-symbols-outlined">close</span></button>
                 </div>
-                <p style="font-size:0.85rem; margin-bottom:1rem; color:var(--text-secondary);">Seleziona il periodo da esportare. Verrà generato un elenco dettagliato di tutti gli episodi registrati.</p>
+                <p style="font-size:0.85rem; margin-bottom:1rem; color:var(--text-secondary);">Seleziona il periodo da esportare. Verrà generato un elenco dettagliato diviso per mesi e impaginato per la stampa.</p>
                 
                 <div style="display:flex; gap:0.5rem; margin-bottom: 1rem;">
                     <div style="flex:1;">
@@ -1010,52 +1010,7 @@ function bindModalEvents() {
             if (!b.startTime) return 1;
             return a.startTime.localeCompare(b.startTime);
         });
-
-        let htmlContent = `
-            <div id="pdf-export-wrap" style="padding: 20px; font-family: sans-serif; background: #fff; color: #000; box-sizing: border-box; width: 100%;">
-               <h1 style="text-align:center; color:#ef4444; margin-bottom: 20px; font-size: 24px;">Diario Emicrania</h1>
-               <p style="text-align:center; font-size: 14px; margin-bottom:30px; color:#64748b;">Periodo: da ${valFrom} a ${valTo}</p>
-        `;
-
-        if (epsToExport.length === 0) {
-            htmlContent += `<p style="text-align:center;">Nessun episodio registrato in questo periodo.</p>`;
-        } else {
-            epsToExport.forEach(ep => {
-                const [y, m, d] = ep.date.split('-');
-                
-                let timeStr = ep.startedInSleep ? 'Nel sonno' : (ep.startTime ? ep.startTime : 'N/D');
-                
-                if (ep.endTime || ep.endedInSleep || (ep.endDate && ep.endDate !== ep.date)) {
-                    let endStr = ep.endedInSleep ? 'Nel sonno' : (ep.endTime ? ep.endTime : 'N/D');
-                    if (ep.endDate && ep.endDate !== ep.date) {
-                        const [ey, em, ed] = ep.endDate.split('-');
-                        endStr += ` (del ${ed}/${em})`;
-                    }
-                    timeStr += ` - ${endStr}`;
-                }
-
-                htmlContent += `
-                    <div style="border: 1px solid #cbd5e1; border-left: 5px solid #ef4444; border-radius: 6px; padding: 10px 15px; margin-bottom: 15px; background: #f8fafc; page-break-inside: avoid;">
-                        <div style="display:flex; justify-content:space-between; margin-bottom:8px; border-bottom:1px solid #e2e8f0; padding-bottom:5px;">
-                            <strong style="font-size:16px;">Data: ${d}/${m}/${y}</strong>
-                            <span style="font-size:14px; font-weight:bold; color:#ef4444;">Orario: ${timeStr}</span>
-                        </div>
-                        <table style="width:100%; font-size:13px; line-height:1.5;">
-                            ${ep.intensity ? `<tr><td style="width:30%; font-weight:bold; color:#475569;">Intensità:</td><td>${ep.intensity} / 10</td></tr>` : ''}
-                            ${(ep.medEfficacy && ep.meds && ep.meds.trim() !== '') ? `<tr><td style="font-weight:bold; color:#475569;">Efficacia Farmaco:</td><td>${ep.medEfficacy} / 10</td></tr>` : ''}
-                            ${ep.location ? `<tr><td style="font-weight:bold; color:#475569;">Localizzazione/Tipo:</td><td>${ep.location}</td></tr>` : ''}
-                            ${ep.symptoms ? `<tr><td style="font-weight:bold; color:#475569;">Sintomi/Preavviso:</td><td>${ep.symptoms}</td></tr>` : ''}
-                            ${ep.triggers ? `<tr><td style="font-weight:bold; color:#475569;">Fattori Scatenanti:</td><td>${ep.triggers}</td></tr>` : ''}
-                            ${ep.meds ? `<tr><td style="font-weight:bold; color:#475569;">Farmaci:</td><td>${ep.meds}</td></tr>` : ''}
-                            ${ep.notes ? `<tr><td style="font-weight:bold; color:#475569; vertical-align:top;">Note:</td><td>${ep.notes}</td></tr>` : ''}
-                        </table>
-                    </div>
-                `;
-            });
-        }
-
-        htmlContent += `</div>`;
-
+        
         const btn = document.getElementById('btn-do-export');
         const oldText = btn.innerText;
         btn.innerText = "Creazione PDF in corso...";
@@ -1072,15 +1027,171 @@ function bindModalEvents() {
                 });
             }
 
+            const monthNames = ["Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno", "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre"];
+            
+            // Per gestire correttamente le pagine formattiamo il codice DOM invisibile 
+            const wrapper = document.createElement('div');
+            wrapper.style.position = 'absolute';
+            wrapper.style.left = '-9999px';
+            wrapper.style.top = '0';
+            wrapper.style.width = '794px'; 
+            wrapper.style.background = '#fff';
+            document.body.appendChild(wrapper);
+
+            let finalHtml = '';
+
+            if (epsToExport.length === 0) {
+                finalHtml = `
+                    <div class="pdf-page" style="width:794px; height:1123px; padding:40px; box-sizing:border-box; background:#fff; font-family:sans-serif; position:relative;">
+                        <h1 style="text-align:center; color:#ef4444; margin: 0 0 20px 0; font-size: 24px;">Diario Emicrania</h1>
+                        <p style="text-align:center; font-size: 14px; margin-bottom:30px; color:#64748b;">Periodo: da ${valFrom} a ${valTo}</p>
+                        <p style="text-align:center;">Nessun episodio registrato in questo periodo.</p>
+                    </div>
+                `;
+            } else {
+                // Raggruppo gli episodi per mese
+                const grouped = {};
+                epsToExport.forEach(ep => {
+                    const monthKey = ep.date.substring(0, 7); 
+                    if(!grouped[monthKey]) grouped[monthKey] = [];
+                    grouped[monthKey].push(ep);
+                });
+                const monthKeys = Object.keys(grouped).sort();
+
+                for (const mk of monthKeys) {
+                    const [yy, mm] = mk.split('-');
+                    const mName = `${monthNames[parseInt(mm, 10)-1]} ${yy}`;
+                    
+                    let pageNum = 1;
+                    
+                    // Funzione per generare una nuova pagina A4 (794x1123 pixel, circa 210x297mm)
+                    function createPage(isCont) {
+                        const page = document.createElement('div');
+                        page.className = 'pdf-page';
+                        page.style.width = '794px';
+                        page.style.height = '1123px';
+                        page.style.padding = '40px';
+                        page.style.boxSizing = 'border-box';
+                        page.style.position = 'relative';
+                        page.style.pageBreakAfter = 'always';
+                        page.style.fontFamily = 'sans-serif';
+                        page.style.background = '#fff';
+                        page.style.color = '#000';
+                        
+                        const header = document.createElement('div');
+                        if (!isCont) {
+                            header.innerHTML = `<h1 style="text-align:center; color:#ef4444; margin: 0 0 20px 0; font-size: 24px;">${mName}</h1>`;
+                        } else {
+                            header.innerHTML = `<h3 style="text-align:center; color:#ef4444; margin: 0 0 20px 0; font-size: 18px;">${mName} (continua)</h3>`;
+                        }
+                        
+                        const content = document.createElement('div');
+                        content.style.maxHeight = '980px'; 
+                        
+                        const footer = document.createElement('div');
+                        footer.style.position = 'absolute';
+                        footer.style.bottom = '40px';
+                        footer.style.right = '40px';
+                        footer.style.fontSize = '12px';
+                        footer.style.color = '#64748b';
+                        footer.innerText = `Pagina ${pageNum}`;
+                        
+                        page.appendChild(header);
+                        page.appendChild(content);
+                        page.appendChild(footer);
+                        
+                        return { el: page, content: content };
+                    }
+                    
+                    let curr = createPage(false);
+                    wrapper.appendChild(curr.el);
+                    
+                    for (const ep of grouped[mk]) {
+                        const [y, m, d] = ep.date.split('-');
+                        
+                        let timeStr = ep.startedInSleep ? 'Nel sonno' : (ep.startTime ? ep.startTime : 'N/D');
+                        if (ep.endTime || ep.endedInSleep || (ep.endDate && ep.endDate !== ep.date)) {
+                            let endStr = ep.endedInSleep ? 'Nel sonno' : (ep.endTime ? ep.endTime : 'N/D');
+                            if (ep.endDate && ep.endDate !== ep.date) {
+                                const [ey, em, ed] = ep.endDate.split('-');
+                                endStr += ` (del ${ed}/${em})`;
+                            }
+                            timeStr += ` - ${endStr}`;
+                        }
+
+                        const epHtml = `
+                            <div style="border: 1px solid #cbd5e1; border-left: 5px solid #ef4444; border-radius: 6px; padding: 10px 15px; margin-bottom: 15px; background: #f8fafc;">
+                                <div style="display:flex; justify-content:space-between; margin-bottom:8px; border-bottom:1px solid #e2e8f0; padding-bottom:5px;">
+                                    <strong style="font-size:16px;">Data: ${d}/${m}/${y}</strong>
+                                    <span style="font-size:14px; font-weight:bold; color:#ef4444;">Orario: ${timeStr}</span>
+                                </div>
+                                <table style="width:100%; font-size:13px; line-height:1.5;">
+                                    ${ep.intensity ? `<tr><td style="width:30%; font-weight:bold; color:#475569;">Intensità:</td><td>${ep.intensity} / 10</td></tr>` : ''}
+                                    ${(ep.medEfficacy && ep.meds && ep.meds.trim() !== '') ? `<tr><td style="font-weight:bold; color:#475569;">Efficacia Farmaco:</td><td>${ep.medEfficacy} / 10</td></tr>` : ''}
+                                    ${ep.location ? `<tr><td style="font-weight:bold; color:#475569;">Localizzazione/Tipo:</td><td>${ep.location}</td></tr>` : ''}
+                                    ${ep.symptoms ? `<tr><td style="font-weight:bold; color:#475569;">Sintomi/Preavviso:</td><td>${ep.symptoms}</td></tr>` : ''}
+                                    ${ep.triggers ? `<tr><td style="font-weight:bold; color:#475569;">Fattori Scatenanti:</td><td>${ep.triggers}</td></tr>` : ''}
+                                    ${ep.meds ? `<tr><td style="font-weight:bold; color:#475569;">Farmaci:</td><td>${ep.meds}</td></tr>` : ''}
+                                    ${ep.notes ? `<tr><td style="font-weight:bold; color:#475569; vertical-align:top;">Note:</td><td>${ep.notes}</td></tr>` : ''}
+                                </table>
+                            </div>
+                        `;
+                        
+                        const tempDiv = document.createElement('div');
+                        tempDiv.innerHTML = epHtml;
+                        const node = tempDiv.firstElementChild;
+                        
+                        curr.content.appendChild(node);
+                        
+                        // Sistema di impaginazione automatico per non sbordare dalla pagina
+                        if (curr.content.scrollHeight > 980) {
+                            curr.content.removeChild(node); // Sforato, lo rimuovo
+                            
+                            // Caso in cui la singola nota è già troppo grande anche da sola
+                            if (curr.content.children.length === 0) {
+                                curr.content.appendChild(node);
+                                finalHtml += curr.el.outerHTML;
+                                wrapper.removeChild(curr.el);
+                                pageNum++;
+                                curr = createPage(true);
+                                wrapper.appendChild(curr.el);
+                            } else {
+                                // Salva pagina attuale e creane un'altra
+                                finalHtml += curr.el.outerHTML;
+                                wrapper.removeChild(curr.el);
+                                pageNum++;
+                                curr = createPage(true);
+                                wrapper.appendChild(curr.el);
+                                curr.content.appendChild(node);
+                                
+                                // Controllo sicurezza aggiuntivo
+                                if (curr.content.scrollHeight > 980) {
+                                    finalHtml += curr.el.outerHTML;
+                                    wrapper.removeChild(curr.el);
+                                    pageNum++;
+                                    curr = createPage(true);
+                                    wrapper.appendChild(curr.el);
+                                }
+                            }
+                        }
+                    }
+                    // Aggiungo la coda finale di questo mese
+                    finalHtml += curr.el.outerHTML;
+                    wrapper.removeChild(curr.el);
+                }
+            }
+            
+            document.body.removeChild(wrapper);
+
             const element = document.createElement('div');
-            element.innerHTML = htmlContent;
+            element.innerHTML = finalHtml;
 
             const opt = {
-              margin:       10,
+              margin:       0, // Zero margini perché li abbiamo già nel nostro CSS custom
               filename:     `Diario_Emicrania_${valFrom}_${valTo}.pdf`,
               image:        { type: 'jpeg', quality: 0.98 },
               html2canvas:  { scale: 2 },
-              jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' } 
+              jsPDF:        { unit: 'px', format: [794, 1123], orientation: 'portrait' } 
             };
 
             await html2pdf().set(opt).from(element).save();
