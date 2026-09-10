@@ -129,6 +129,11 @@ function injectStyles() {
         .selectable-chip.med-chip { background: rgba(150,150,150,0.1); }
         
         .med-row { display: flex; justify-content: space-between; align-items: center; padding: 0.5rem; background: rgba(150,150,150,0.05); border-radius: 6px; }
+        
+        /* Dynamic Meds List */
+        .selected-med-row { display:flex; align-items:center; gap:0.5rem; background:rgba(150,150,150,0.05); padding:0.5rem; border-radius:6px; border:1px solid var(--border-soft); }
+        .selected-med-row .med-name { flex:1; font-size:0.85rem; font-weight:bold; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .selected-med-row .med-time { width: auto; }
     `;
     document.head.appendChild(style);
 }
@@ -399,10 +404,22 @@ function buildModalsToBody() {
                         <span class="material-symbols-outlined chevron">expand_more</span>
                     </div>
                     <div class="migraine-accordion-content">
-                        <div class="chip-group" id="quick-meds-container">
+                        <div style="font-size:0.8rem; color:var(--text-secondary); margin-bottom:0.2rem;">Tocca un farmaco salvato per aggiungerlo (anche più volte):</div>
+                        <div class="chip-group" id="quick-meds-container" style="margin-bottom:0.5rem;">
                             <!-- Farmaci dinamici -->
                         </div>
-                        <input type="text" id="add-meds-other" placeholder="Es. Dolore passato dopo 2h..." class="migraine-input">
+                        
+                        <div id="selected-meds-list" style="display:flex; flex-direction:column; gap:0.5rem; margin-bottom:0.5rem;">
+                            <!-- Farmaci selezionati e relativi orari -->
+                        </div>
+
+                        <div style="display:flex; gap:0.5rem; margin-bottom: 0.5rem;">
+                            <input type="text" id="add-custom-med-name" placeholder="Altro farmaco..." class="migraine-input" style="flex:1; margin:0;">
+                            <input type="time" id="add-custom-med-time" class="migraine-input" style="width:auto; margin:0;">
+                            <button type="button" id="btn-add-custom-med" class="btn primary" style="padding:0 0.8rem; margin:0;"><span class="material-symbols-outlined">add</span></button>
+                        </div>
+
+                        <input type="text" id="add-meds-other" placeholder="Note sui farmaci (es. Dolore passato dopo 2h)..." class="migraine-input">
                         <div style="margin-top: 0.5rem;">
                             <label style="display:block; font-size:0.8rem; color:var(--text-secondary); margin-bottom:0.2rem;">Efficacia del medicinale (1-10)</label>
                             <input type="range" id="add-med-efficacy" min="1" max="10" value="5" class="migraine-input" style="padding:0;">
@@ -515,6 +532,22 @@ function setCategoryData(containerId, otherInputId, fullString) {
     if (otherInput && leftovers.length > 0) {
         otherInput.value = leftovers.join(', ');
     }
+}
+
+// --- FUNZIONE PER AGGIUNGERE UN FARMACO ALLA LISTA DINAMICA ---
+function addMedInstance(name, time = '') {
+    const list = document.getElementById('selected-meds-list');
+    const row = document.createElement('div');
+    row.className = 'selected-med-row';
+    row.innerHTML = `
+        <div class="med-name" title="${name}">${name}</div>
+        <input type="time" class="migraine-input med-time" style="padding: 0.3rem; font-size: 0.85rem; width: auto; margin:0;" value="${time}">
+        <button type="button" class="icon-btn btn-del-med-instance" style="color:#ef4444; width:28px; height:28px; min-width:28px; margin:0;"><span class="material-symbols-outlined" style="font-size:1.1rem;">close</span></button>
+    `;
+    row.querySelector('.btn-del-med-instance').addEventListener('click', () => {
+        row.remove();
+    });
+    list.appendChild(row);
 }
 
 
@@ -666,8 +699,32 @@ function openDayDetails(dateStr) {
                 setCategoryData('chips-location', 'add-location-other', entry.location);
                 setCategoryData('chips-symptoms', 'add-symptoms-other', entry.symptoms);
                 setCategoryData('chips-triggers', 'add-triggers-other', entry.triggers);
-                setCategoryData('quick-meds-container', 'add-meds-other', entry.meds);
                 document.getElementById('add-notes').value = entry.notes || '';
+                
+                // Popolamento lista farmaci
+                document.getElementById('selected-meds-list').innerHTML = '';
+                document.getElementById('add-custom-med-name').value = '';
+                document.getElementById('add-custom-med-time').value = '';
+                
+                if (entry.medicationDetails) {
+                    entry.medicationDetails.forEach(m => addMedInstance(m.name, m.time));
+                    document.getElementById('add-meds-other').value = entry.medNotes || '';
+                } else if (entry.meds) {
+                    // Fallback di retrocompatibilità per leggere le vecchie stringhe formattate a virgola
+                    let parts = entry.meds.split(',').map(s => s.trim());
+                    let leftovers = [];
+                    parts.forEach(part => {
+                        let found = savedMeds.find(sm => sm.name === part || `${sm.name} (${sm.dosage})` === part);
+                        if (found) {
+                            addMedInstance(found.name ? (found.dosage ? `${found.name} (${found.dosage})` : found.name) : part);
+                        } else if (part !== '') {
+                            leftovers.push(part);
+                        }
+                    });
+                    document.getElementById('add-meds-other').value = leftovers.join(', ');
+                } else {
+                    document.getElementById('add-meds-other').value = '';
+                }
                 
                 // Chiudi tutte le schede per pulizia visiva
                 document.querySelectorAll('.migraine-accordion').forEach(acc => acc.classList.remove('open'));
@@ -743,10 +800,10 @@ function renderQuickMeds() {
         cont.appendChild(chip);
     });
     
-    // Ripetiamo il binding del click per i chip appena creati dinamicamente
+    // Il binding del click aggiungerà il farmaco come riga istanziata, invece di attivare solo la selezione
     cont.querySelectorAll('.selectable-chip').forEach(chip => {
         chip.addEventListener('click', () => {
-            chip.classList.toggle('selected');
+            addMedInstance(chip.innerText);
         });
     });
 }
@@ -773,6 +830,17 @@ function bindModalEvents() {
     document.getElementById('btn-close-add').addEventListener('click', () => document.getElementById('cal-add-modal').classList.add('hidden'));
     document.getElementById('btn-close-day-details').addEventListener('click', () => document.getElementById('cal-day-details-modal').classList.add('hidden'));
     
+    // Gestione Aggiunta Farmaco Custom con orario
+    document.getElementById('btn-add-custom-med').addEventListener('click', () => {
+        const name = document.getElementById('add-custom-med-name').value.trim();
+        const time = document.getElementById('add-custom-med-time').value;
+        if (name) {
+            addMedInstance(name, time);
+            document.getElementById('add-custom-med-name').value = '';
+            document.getElementById('add-custom-med-time').value = '';
+        }
+    });
+    
     // Gestione Accordion e Chip Generici (Statici)
     document.querySelectorAll('.migraine-accordion-header').forEach(header => {
         header.addEventListener('click', () => {
@@ -780,9 +848,9 @@ function bindModalEvents() {
         });
     });
 
-    document.querySelectorAll('.selectable-chip').forEach(chip => {
+    // Per localizzazione, sintomi, e trigger (esclude i farmaci che hanno ora logica custom)
+    document.querySelectorAll('#chips-location .selectable-chip, #chips-symptoms .selectable-chip, #chips-triggers .selectable-chip').forEach(chip => {
         chip.addEventListener('click', () => {
-            // Se è a selezione singola (es. intensità), deseleziona gli altri nel suo gruppo
             if (chip.classList.contains('single-select')) {
                 chip.parentElement.querySelectorAll('.single-select').forEach(c => c.classList.remove('selected'));
                 chip.classList.add('selected');
@@ -881,6 +949,7 @@ function bindModalEvents() {
                 intensityCounts[e.intensity] = (intensityCounts[e.intensity] || 0) + 1;
             }
             
+            // Questo gestisce perfettamente anche le nuove stringhe "Farmaco (Ora)" elaborate sotto
             if (e.meds && e.meds.trim() !== '') {
                 const mList = e.meds.split(',').filter(x => x.trim() !== '');
                 medsTakenCount += mList.length;
@@ -965,8 +1034,13 @@ function bindModalEvents() {
         setCategoryData('chips-location', 'add-location-other', '');
         setCategoryData('chips-symptoms', 'add-symptoms-other', '');
         setCategoryData('chips-triggers', 'add-triggers-other', '');
-        setCategoryData('quick-meds-container', 'add-meds-other', '');
         document.getElementById('add-notes').value = '';
+        
+        // Svuota sezione farmaci
+        document.getElementById('selected-meds-list').innerHTML = '';
+        document.getElementById('add-custom-med-name').value = '';
+        document.getElementById('add-custom-med-time').value = '';
+        document.getElementById('add-meds-other').value = '';
 
         // Chiude gli accordion
         document.querySelectorAll('.migraine-accordion').forEach(acc => acc.classList.remove('open'));
@@ -1211,6 +1285,20 @@ function bindModalEvents() {
         const editId = document.getElementById('edit-entry-id').value; 
         const date = document.getElementById('add-date').value;
         
+        // Estrai dati farmaci dinamici
+        const medRows = Array.from(document.getElementById('selected-meds-list').children);
+        const medicationDetails = medRows.map(row => {
+            return {
+                name: row.querySelector('.med-name').innerText,
+                time: row.querySelector('.med-time').value
+            };
+        });
+        const medNotes = document.getElementById('add-meds-other').value.trim();
+        
+        // Genera la stringa compatibile 'meds' combinando nome e orario
+        const medsFormat = medicationDetails.map(m => m.time ? `${m.name} (${m.time})` : m.name);
+        if (medNotes) medsFormat.push(medNotes);
+        
         const payload = {
             date: date,
             startTime: document.getElementById('add-start').value,
@@ -1223,7 +1311,9 @@ function bindModalEvents() {
             location: getCategoryData('chips-location', 'add-location-other'),
             symptoms: getCategoryData('chips-symptoms', 'add-symptoms-other'),
             triggers: getCategoryData('chips-triggers', 'add-triggers-other'),
-            meds: getCategoryData('quick-meds-container', 'add-meds-other'),
+            medicationDetails: medicationDetails, // Struttura ad array
+            medNotes: medNotes,
+            meds: medsFormat.join(', '), // Mantiene compatibilità perfetta con visualizzazione PDF e statistiche
             notes: document.getElementById('add-notes').value.trim()
         };
 
