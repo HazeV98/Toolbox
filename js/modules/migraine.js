@@ -297,10 +297,19 @@ function buildModalsToBody() {
                     <div class="migraine-form-group" style="flex:1; margin-bottom:0;">
                         <label>Ora Inizio</label>
                         <input type="time" id="add-start" class="migraine-input">
+                        <label style="display:flex; align-items:center; gap:0.3rem; margin-top:0.5rem; font-size:0.75rem; cursor:pointer;">
+                            <input type="checkbox" id="add-started-sleep"> Iniziato nel sonno
+                        </label>
                     </div>
                     <div class="migraine-form-group" style="flex:1; margin-bottom:0;">
-                        <label>Ora Fine</label>
-                        <input type="time" id="add-end" class="migraine-input">
+                        <label>Fine (Data e Ora)</label>
+                        <div style="display:flex; gap:0.2rem;">
+                            <input type="date" id="add-end-date" class="migraine-input">
+                            <input type="time" id="add-end" class="migraine-input">
+                        </div>
+                        <label style="display:flex; align-items:center; gap:0.3rem; margin-top:0.5rem; font-size:0.75rem; cursor:pointer;">
+                            <input type="checkbox" id="add-ended-sleep"> Finito nel sonno
+                        </label>
                     </div>
                 </div>
 
@@ -594,7 +603,17 @@ function openDayDetails(dateStr) {
             div.className = `episode-row`;
             
             let timeText = entry.startTime ? `${entry.startTime}` : 'Ora non specificata';
-            if (entry.endTime) timeText += ` - ${entry.endTime}`;
+            if (entry.startedInSleep) timeText += ` (nel sonno)`;
+            
+            if (entry.endTime) {
+                let endStr = entry.endTime;
+                if (entry.endDate && entry.endDate !== entry.date) {
+                    const [ey, em, ed] = entry.endDate.split('-');
+                    endStr += ` (del ${ed}/${em})`;
+                }
+                timeText += ` - ${endStr}`;
+                if (entry.endedInSleep) timeText += ` (nel sonno)`;
+            }
             
             let summaryStr = [];
             if (entry.intensity) summaryStr.push(`Intensità: ${entry.intensity}`);
@@ -631,7 +650,11 @@ function openDayDetails(dateStr) {
                 document.getElementById('add-date').value = entry.date;
                 
                 document.getElementById('add-start').value = entry.startTime || '';
+                document.getElementById('add-end-date').value = entry.endDate || '';
                 document.getElementById('add-end').value = entry.endTime || '';
+                
+                document.getElementById('add-started-sleep').checked = entry.startedInSleep || false;
+                document.getElementById('add-ended-sleep').checked = entry.endedInSleep || false;
                 
                 // Popola i campi tramite la funzione di set
                 const intInput = document.getElementById('add-intensity');
@@ -930,7 +953,11 @@ function bindModalEvents() {
         
         // Svuota form
         document.getElementById('add-start').value = '';
+        document.getElementById('add-end-date').value = '';
         document.getElementById('add-end').value = '';
+        
+        document.getElementById('add-started-sleep').checked = false;
+        document.getElementById('add-ended-sleep').checked = false;
         
         document.getElementById('add-intensity').value = 5;
         document.getElementById('intensity-val').innerText = 5;
@@ -999,7 +1026,17 @@ function bindModalEvents() {
                 const [y, m, d] = ep.date.split('-');
                 
                 let timeStr = ep.startTime ? ep.startTime : 'N/D';
-                if (ep.endTime) timeStr += ` - ${ep.endTime}`;
+                if (ep.startedInSleep) timeStr += ` (nel sonno)`;
+                
+                if (ep.endTime) {
+                    let endStr = ep.endTime;
+                    if (ep.endDate && ep.endDate !== ep.date) {
+                        const [ey, em, ed] = ep.endDate.split('-');
+                        endStr += ` (del ${ed}/${em})`;
+                    }
+                    timeStr += ` - ${endStr}`;
+                    if (ep.endedInSleep) timeStr += ` (nel sonno)`;
+                }
 
                 htmlContent += `
                     <div style="border: 1px solid #cbd5e1; border-left: 5px solid #ef4444; border-radius: 6px; padding: 10px 15px; margin-bottom: 15px; background: #f8fafc; page-break-inside: avoid;">
@@ -1070,7 +1107,10 @@ function bindModalEvents() {
         const payload = {
             date: date,
             startTime: document.getElementById('add-start').value,
+            startedInSleep: document.getElementById('add-started-sleep').checked,
+            endDate: document.getElementById('add-end-date').value,
             endTime: document.getElementById('add-end').value,
+            endedInSleep: document.getElementById('add-ended-sleep').checked,
             intensity: document.getElementById('add-intensity').value,
             medEfficacy: document.getElementById('add-med-efficacy').value,
             location: getCategoryData('chips-location', 'add-location-other'),
