@@ -602,22 +602,20 @@ function openDayDetails(dateStr) {
             const div = document.createElement('div');
             div.className = `episode-row`;
             
-            let timeText = entry.startTime ? `${entry.startTime}` : 'Ora non specificata';
-            if (entry.startedInSleep) timeText += ` (nel sonno)`;
+            let timeText = entry.startedInSleep ? 'Nel sonno' : (entry.startTime ? `${entry.startTime}` : 'Ora non specificata');
             
-            if (entry.endTime) {
-                let endStr = entry.endTime;
+            if (entry.endTime || entry.endedInSleep || (entry.endDate && entry.endDate !== entry.date)) {
+                let endStr = entry.endedInSleep ? 'Nel sonno' : (entry.endTime ? entry.endTime : 'N/D');
                 if (entry.endDate && entry.endDate !== entry.date) {
                     const [ey, em, ed] = entry.endDate.split('-');
                     endStr += ` (del ${ed}/${em})`;
                 }
                 timeText += ` - ${endStr}`;
-                if (entry.endedInSleep) timeText += ` (nel sonno)`;
             }
             
             let summaryStr = [];
             if (entry.intensity) summaryStr.push(`Intensità: ${entry.intensity}`);
-            if (entry.medEfficacy) summaryStr.push(`Efficacia: ${entry.medEfficacy}`);
+            if (entry.medEfficacy && entry.meds && entry.meds.trim() !== '') summaryStr.push(`Efficacia: ${entry.medEfficacy}`);
             if (entry.location) summaryStr.push(entry.location);
             
             let actionsHtml = `
@@ -1025,17 +1023,15 @@ function bindModalEvents() {
             epsToExport.forEach(ep => {
                 const [y, m, d] = ep.date.split('-');
                 
-                let timeStr = ep.startTime ? ep.startTime : 'N/D';
-                if (ep.startedInSleep) timeStr += ` (nel sonno)`;
+                let timeStr = ep.startedInSleep ? 'Nel sonno' : (ep.startTime ? ep.startTime : 'N/D');
                 
-                if (ep.endTime) {
-                    let endStr = ep.endTime;
+                if (ep.endTime || ep.endedInSleep || (ep.endDate && ep.endDate !== ep.date)) {
+                    let endStr = ep.endedInSleep ? 'Nel sonno' : (ep.endTime ? ep.endTime : 'N/D');
                     if (ep.endDate && ep.endDate !== ep.date) {
                         const [ey, em, ed] = ep.endDate.split('-');
                         endStr += ` (del ${ed}/${em})`;
                     }
                     timeStr += ` - ${endStr}`;
-                    if (ep.endedInSleep) timeStr += ` (nel sonno)`;
                 }
 
                 htmlContent += `
@@ -1046,7 +1042,7 @@ function bindModalEvents() {
                         </div>
                         <table style="width:100%; font-size:13px; line-height:1.5;">
                             ${ep.intensity ? `<tr><td style="width:30%; font-weight:bold; color:#475569;">Intensità:</td><td>${ep.intensity} / 10</td></tr>` : ''}
-                            ${ep.medEfficacy ? `<tr><td style="font-weight:bold; color:#475569;">Efficacia Farmaco:</td><td>${ep.medEfficacy} / 10</td></tr>` : ''}
+                            ${(ep.medEfficacy && ep.meds && ep.meds.trim() !== '') ? `<tr><td style="font-weight:bold; color:#475569;">Efficacia Farmaco:</td><td>${ep.medEfficacy} / 10</td></tr>` : ''}
                             ${ep.location ? `<tr><td style="font-weight:bold; color:#475569;">Localizzazione/Tipo:</td><td>${ep.location}</td></tr>` : ''}
                             ${ep.symptoms ? `<tr><td style="font-weight:bold; color:#475569;">Sintomi/Preavviso:</td><td>${ep.symptoms}</td></tr>` : ''}
                             ${ep.triggers ? `<tr><td style="font-weight:bold; color:#475569;">Fattori Scatenanti:</td><td>${ep.triggers}</td></tr>` : ''}
