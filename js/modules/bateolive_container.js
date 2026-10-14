@@ -777,32 +777,40 @@ function avviaCicloAggiornamento() {
     }, 1500);
 }
 
-// Z-index dell'header del container: la mappa gli sta subito sotto, così arriva fino in cima e l'header resta sopra.
-// Si legge cosa c'è in cima allo schermo (escluso BateoLive) e si prende lo z-index del suo livello.
+// Livello (z-index) dell'header del container: la mappa gli sta subito sotto, così arriva fino in cima e l'header resta sopra.
+// Si guarda cosa c'è in cima allo schermo (escluso BateoLive) e si risale fino al suo livello più esterno che crea uno
+// stacking context: conta quello (non gli z-index degli elementi interni all'header). Senza z-index numerico → null.
 function zDellHeader(root, y) {
     try {
         for (const el of document.elementsFromPoint(Math.round(window.innerWidth / 2), Math.max(1, y))) {
             if (root.contains(el) || el === document.documentElement || el === document.body) continue;
-            for (let n = el; n && n !== document.body; n = n.parentElement) {
+            let ctx = null;
+            for (let n = el; n && n !== document.body && n !== document.documentElement; n = n.parentElement) {
                 const cs = getComputedStyle(n);
-                if (cs.position !== 'static' && cs.zIndex !== 'auto') return parseInt(cs.zIndex, 10);
+                const posizionato = cs.position !== 'static';
+                const creaContesto = (posizionato && cs.zIndex !== 'auto') || cs.position === 'fixed' || cs.position === 'sticky'
+                    || cs.transform !== 'none' || parseFloat(cs.opacity) < 1 || cs.filter !== 'none'
+                    || (cs.backdropFilter && cs.backdropFilter !== 'none') || /transform|opacity|filter/.test(cs.willChange || '');
+                if (creaContesto) ctx = { n, cs, z: (posizionato && cs.zIndex !== 'auto') ? parseInt(cs.zIndex, 10) : null };
             }
-            return null;   // l'elemento in cima non ha un livello proprio: non si può stare sotto di lui
+            return ctx && ctx.z !== null ? ctx.z : null;
         }
     } catch (e) { /* si usa il ripiego */ }
     return null;
 }
 
-// Mappa a tutta altezza dietro l'header; i controlli in alto (--bv-sat) scendono sotto di lui.
-// Ripiego se non si riesce a stare sotto l'header: la mappa parte subito sotto la testata.
-function allineaSottoTestata() {
-    const root = document.getElementById('modal-bateolive-main');
-    if (!root || !bvContainer) return;
-    const top = bvContainer === document.body ? 0 : Math.max(0, Math.round(bvContainer.getBoundingClientRect().top));
-    if (top === bvTopUltimo) return;
-    bvTopUltimo = top;
-    const z = top > 0 ? zDellHeader(root, Math.round(top / 2)) : null;
-    if (top > 0 && z !== null && z > 1) {
+// true se BateoLive sta coprendo l'header (il punto sotto l'header cade dentro la mappa)
+function headerCoperto(root, y) {
+    try {
+        const primo = document.elementsFromPoint(Math.round(window.innerWidth / 2), Math.max(1, y))[0];
+        return !!primo && root.contains(primo);
+    } catch (e) { return false; }
+}
+
+let bvModoPieno = false;
+function applicaModoMappa(root, top, pieno, z) {
+    bvModoPieno = pieno;
+    if (pieno) {
         root.style.setProperty('--bv-top', '0px');
         root.style.setProperty('--bv-sat', top + 'px');
         root.style.setProperty('--bv-z', String(z - 1));
@@ -811,6 +819,24 @@ function allineaSottoTestata() {
         root.style.setProperty('--bv-sat', '0px');
         root.style.setProperty('--bv-z', '900');
     }
+}
+
+// Mappa a tutta altezza dietro l'header; i controlli in alto (--bv-sat) scendono sotto di lui.
+// Ripiego (mappa sotto la testata) se non si riesce a stare sotto l'header, o se alla prova lo coprirebbe.
+function allineaSottoTestata() {
+    const root = document.getElementById('modal-bateolive-main');
+    if (!root || !bvContainer) return;
+    const top = bvContainer === document.body ? 0 : Math.max(0, Math.round(bvContainer.getBoundingClientRect().top));
+    const y = Math.round(top / 2);
+    if (top === bvTopUltimo) {
+        // sicurezza: se a mappa a tutta altezza l'header risulta coperto, si torna subito sotto la testata
+        if (bvModoPieno && headerCoperto(root, y)) { applicaModoMappa(root, top, false, null); if (map) map.invalidateSize(); }
+        return;
+    }
+    bvTopUltimo = top;
+    const z = top > 0 ? zDellHeader(root, y) : null;
+    applicaModoMappa(root, top, top > 0 && z !== null && z > 1, z);
+    if (bvModoPieno && headerCoperto(root, y)) applicaModoMappa(root, top, false, null);
     if (map) map.invalidateSize();
 }
 
