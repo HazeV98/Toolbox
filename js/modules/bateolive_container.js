@@ -180,7 +180,7 @@ function initUIBateoLive() {
             100% { transform: none; opacity: 1; }
         }
 
-        #modal-bateolive-main { position: fixed; top: var(--bv-top, 0px); left: 0; right: 0; bottom: 0; z-index: 900; background: var(--bv-surface); color: var(--bv-text); display: none; flex-direction: column; font-family: inherit; overflow: hidden; }
+        #modal-bateolive-main { position: fixed; top: var(--bv-top, 0px); left: 0; right: 0; bottom: 0; z-index: var(--bv-z, 900); background: var(--bv-surface); color: var(--bv-text); display: none; flex-direction: column; font-family: inherit; overflow: hidden; }
         #modal-bateolive-main button, #modal-bateolive-main input { font-family: inherit; }
         #modal-bateolive-main button:focus-visible { outline: 2px solid var(--bv-primary); outline-offset: 2px; }
 
@@ -209,13 +209,13 @@ function initUIBateoLive() {
 
         /* ---------- Tasti fluttuanti ---------- */
         .bv-back-btn, .bv-fab { width: 45px; height: 45px; border-radius: 50%; background: var(--bv-glass); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid var(--bv-border); box-shadow: var(--bv-shadow); display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--bv-primary); transition: transform 0.2s, background 0.2s, color 0.2s; }
-        .bv-back-btn { position: absolute; top: calc(20px + env(safe-area-inset-top, 0px)); left: 20px; z-index: 3000; padding: 0; font-size: 18px; }
+        .bv-back-btn { position: absolute; top: calc(20px + var(--bv-sat, env(safe-area-inset-top, 0px))); left: 20px; z-index: 3000; padding: 0; font-size: 18px; }
         .bv-back-btn { display: none; }
         #modal-bateolive-main.rewind-on .bv-back-btn { display: flex; }
         .bv-fab { font-size: 18px; }
         .bv-fab.active { background: var(--bv-primary); border-color: var(--bv-primary); color: #fff; }
         .bv-fab:hover { transform: scale(1.05); }
-        .bv-fab-container { position: absolute; bottom: calc(90px + env(safe-area-inset-bottom, 0px)); left: 20px; z-index: 1000; display: flex; flex-direction: column; flex-wrap: wrap; justify-content: flex-end; max-height: calc(100% - 165px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)); gap: 15px; pointer-events: none; }
+        .bv-fab-container { position: absolute; bottom: calc(90px + env(safe-area-inset-bottom, 0px)); left: 20px; z-index: 1000; display: flex; flex-direction: column; flex-wrap: wrap; justify-content: flex-end; max-height: calc(100% - 165px - var(--bv-sat, env(safe-area-inset-top, 0px)) - env(safe-area-inset-bottom, 0px)); gap: 15px; pointer-events: none; }
         /* Colonna tasti richiudibile: a cascata dal basso quando si apre, dall'alto quando si chiude */
         .bv-fab-container .bv-fab { pointer-events: auto; opacity: 1; transform: none; transition: transform 0.32s cubic-bezier(0.2, 0.9, 0.3, 1.15), opacity 0.22s ease, background 0.2s, color 0.2s; }
         .bv-fab-container.chiuso .bv-fab { opacity: 0; transform: translateY(26px) scale(0.5); pointer-events: none; transition: transform 0.22s ease-in, opacity 0.18s ease, background 0.2s, color 0.2s; }
@@ -229,11 +229,11 @@ function initUIBateoLive() {
         .bv-zoom .bv-fab.disabled { opacity: 0.35; pointer-events: none; }
         #modal-bateolive-main.hud-box .bv-zoom { bottom: calc(30px + env(safe-area-inset-bottom, 0px) + var(--bv-hud-box-h, 0px) + 12px); }
 
-        .bv-error-banner { position: absolute; top: calc(20px + env(safe-area-inset-top, 0px)); left: 50%; transform: translateX(-50%) translateY(-20px); z-index: 1500; background: var(--bv-danger); color: #fff; padding: 10px 18px; border-radius: 12px; font-size: 13px; font-weight: 600; box-shadow: var(--bv-shadow); display: flex; align-items: center; gap: 8px; opacity: 0; pointer-events: none; transition: opacity 0.25s ease, transform 0.25s ease; max-width: 85%; text-align: center; }
+        .bv-error-banner { position: absolute; top: calc(20px + var(--bv-sat, env(safe-area-inset-top, 0px))); left: 50%; transform: translateX(-50%) translateY(-20px); z-index: 1500; background: var(--bv-danger); color: #fff; padding: 10px 18px; border-radius: 12px; font-size: 13px; font-weight: 600; box-shadow: var(--bv-shadow); display: flex; align-items: center; gap: 8px; opacity: 0; pointer-events: none; transition: opacity 0.25s ease, transform 0.25s ease; max-width: 85%; text-align: center; }
         .bv-error-banner.active { opacity: 1; transform: translateX(-50%) translateY(0); }
 
         /* ---------- HUD bussola ---------- */
-        .bv-hud-compass { display: none !important; position: absolute; top: calc(15px + env(safe-area-inset-top, 0px)); left: 50%; transform: translateX(-50%); width: 250px; height: 60px; background: var(--bv-glass); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border-radius: 12px; border: 1px solid var(--bv-border); box-shadow: var(--bv-shadow); overflow: hidden; z-index: 1000; align-items: center; justify-content: center; display: none; }
+        .bv-hud-compass { display: none !important; position: absolute; top: calc(15px + var(--bv-sat, env(safe-area-inset-top, 0px))); left: 50%; transform: translateX(-50%); width: 250px; height: 60px; background: var(--bv-glass); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border-radius: 12px; border: 1px solid var(--bv-border); box-shadow: var(--bv-shadow); overflow: hidden; z-index: 1000; align-items: center; justify-content: center; display: none; }
         .bv-compass-tape { position: absolute; top: 10px; left: 0; height: 100%; display: flex; transition: transform 0.15s linear; }
         .bv-compass-mark { display: flex; flex-direction: column; align-items: center; justify-content: flex-start; width: 60px; flex-shrink: 0; }
         .bv-tick { width: 2px; height: 8px; background: var(--bv-muted); opacity: 0.7; margin-bottom: 4px; border-radius: 2px; }
@@ -248,10 +248,10 @@ function initUIBateoLive() {
         .bv-speed-val { font-size: 42px; font-weight: 900; color: var(--bv-primary); line-height: 0.9; font-variant-numeric: tabular-nums; }
         .bv-speed-unit { font-size: 16px; font-weight: bold; color: var(--bv-muted); }
 
-        .bv-hud-status { position: absolute; top: calc(15px + env(safe-area-inset-top, 0px)); left: 50%; transform: translateX(-50%); z-index: 1500; background: rgba(0,0,0,0.6); color: white; padding: 6px 16px; border-radius: 20px; font-size: 13px; font-weight: bold; display: none; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
+        .bv-hud-status { position: absolute; top: calc(15px + var(--bv-sat, env(safe-area-inset-top, 0px))); left: 50%; transform: translateX(-50%); z-index: 1500; background: rgba(0,0,0,0.6); color: white; padding: 6px 16px; border-radius: 20px; font-size: 13px; font-weight: bold; display: none; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
 
         /* ---------- Pannello dettagli (unità e fermate) ---------- */
-        #bv-drawer { position: absolute; top: calc(15px + env(safe-area-inset-top, 0px)); right: 15px; width: 360px; max-height: calc(100% - 30px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)); background: var(--bv-surface); border: 1px solid var(--bv-border); border-radius: 18px; box-shadow: 0 10px 34px rgba(0,0,0,0.3); z-index: 1000; display: flex; flex-direction: column; overflow: hidden; opacity: 0; visibility: hidden; transform: translateX(24px); transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.25s ease, visibility 0s linear 0.3s; }
+        #bv-drawer { position: absolute; top: calc(15px + var(--bv-sat, env(safe-area-inset-top, 0px))); right: 15px; width: 360px; max-height: calc(100% - 30px - var(--bv-sat, env(safe-area-inset-top, 0px)) - env(safe-area-inset-bottom, 0px)); background: var(--bv-surface); border: 1px solid var(--bv-border); border-radius: 18px; box-shadow: 0 10px 34px rgba(0,0,0,0.3); z-index: 1000; display: flex; flex-direction: column; overflow: hidden; opacity: 0; visibility: hidden; transform: translateX(24px); transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.25s ease, visibility 0s linear 0.3s; }
         #bv-drawer.open { opacity: 1; visibility: visible; transform: none; transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.25s ease, visibility 0s; }
         #bv-drawer-header { display: flex; align-items: center; gap: 12px; padding: 14px 14px 12px 16px; border-bottom: 1px solid var(--bv-border); flex-shrink: 0; }
         #bv-drawer-badge { flex: none; display: flex; align-items: center; justify-content: center; }
@@ -341,7 +341,7 @@ function initUIBateoLive() {
         }
 
         /* ---------- Finestre (ricerca, filtri, unità) ---------- */
-        .bv-modal-overlay { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 2000; align-items: center; justify-content: center; backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); opacity: 0; transition: opacity 0.2s ease; padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); box-sizing: border-box; }
+        .bv-modal-overlay { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 2000; align-items: center; justify-content: center; backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); opacity: 0; transition: opacity 0.2s ease; padding-top: var(--bv-sat, env(safe-area-inset-top, 0px)); padding-bottom: env(safe-area-inset-bottom, 0px); box-sizing: border-box; }
         .bv-modal-overlay.active { display: flex; opacity: 1; }
 
         .bv-modal { background: var(--bv-surface); color: var(--bv-text); padding: 20px; border-radius: 18px; border: 1px solid var(--bv-border); width: 90%; max-width: 320px; max-height: 80vh; display: flex; flex-direction: column; box-shadow: 0 10px 34px rgba(0,0,0,0.35); position: relative; }
@@ -392,9 +392,9 @@ function initUIBateoLive() {
         #modal-bateolive-main.rewind-on .bv-hud-speed,
         #modal-bateolive-main.rewind-on .bv-hud-status,
         #modal-bateolive-main.rewind-on .bv-error-banner { display: none !important; }
-        #modal-bateolive-main.rewind-on #bv-drawer { top: calc(78px + env(safe-area-inset-top, 0px)); max-height: calc(100% - 78px - 190px - env(safe-area-inset-top, 0px)); }
+        #modal-bateolive-main.rewind-on #bv-drawer { top: calc(78px + var(--bv-sat, env(safe-area-inset-top, 0px))); max-height: calc(100% - 78px - 190px - var(--bv-sat, env(safe-area-inset-top, 0px))); }
 
-        .bv-rw-datebar { display: none; position: absolute; top: calc(20px + env(safe-area-inset-top, 0px)); left: 75px; right: 20px; max-width: 420px; height: 45px; z-index: 1500; align-items: center; justify-content: center; gap: 10px; padding: 0 16px; box-sizing: border-box; border: 1px solid var(--bv-border); border-radius: 22px; background: var(--bv-glass); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); box-shadow: var(--bv-shadow); color: var(--bv-primary); font-size: 14px; font-weight: 700; line-height: 1; font-family: inherit; cursor: pointer; }
+        .bv-rw-datebar { display: none; position: absolute; top: calc(20px + var(--bv-sat, env(safe-area-inset-top, 0px))); left: 75px; right: 20px; max-width: 420px; height: 45px; z-index: 1500; align-items: center; justify-content: center; gap: 10px; padding: 0 16px; box-sizing: border-box; border: 1px solid var(--bv-border); border-radius: 22px; background: var(--bv-glass); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); box-shadow: var(--bv-shadow); color: var(--bv-primary); font-size: 14px; font-weight: 700; line-height: 1; font-family: inherit; cursor: pointer; }
         .bv-rw-datebar span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .bv-rw-datebar i:last-child { font-size: 11px; opacity: 0.7; }
         #modal-bateolive-main.rewind-on .bv-rw-datebar { display: flex; }
@@ -436,7 +436,7 @@ function initUIBateoLive() {
             #bv-drawer { top: auto; left: 10px; right: 10px; width: auto; bottom: calc(10px + env(safe-area-inset-bottom, 0px)); max-height: 60%; transform: translateY(24px); }
             #bv-drawer.open { transform: none; }
             #modal-bateolive-main:has(#bv-drawer.open) .bv-zoom { opacity: 0; pointer-events: none; }
-            #modal-bateolive-main.rewind-on #bv-drawer { top: auto; bottom: 190px; max-height: calc(100% - 78px - 190px - env(safe-area-inset-top, 0px)); }
+            #modal-bateolive-main.rewind-on #bv-drawer { top: auto; bottom: 190px; max-height: calc(100% - 78px - 190px - var(--bv-sat, env(safe-area-inset-top, 0px))); }
         }
 
         @media (prefers-reduced-motion: reduce) {
@@ -777,14 +777,40 @@ function avviaCicloAggiornamento() {
     }, 1500);
 }
 
-// L'area della mappa parte subito sotto la testata del container (così il suo tasto indietro resta usabile)
+// Z-index dell'header del container: la mappa gli sta subito sotto, così arriva fino in cima e l'header resta sopra.
+// Si legge cosa c'è in cima allo schermo (escluso BateoLive) e si prende lo z-index del suo livello.
+function zDellHeader(root, y) {
+    try {
+        for (const el of document.elementsFromPoint(Math.round(window.innerWidth / 2), Math.max(1, y))) {
+            if (root.contains(el) || el === document.documentElement || el === document.body) continue;
+            for (let n = el; n && n !== document.body; n = n.parentElement) {
+                const cs = getComputedStyle(n);
+                if (cs.position !== 'static' && cs.zIndex !== 'auto') return parseInt(cs.zIndex, 10);
+            }
+            return null;   // l'elemento in cima non ha un livello proprio: non si può stare sotto di lui
+        }
+    } catch (e) { /* si usa il ripiego */ }
+    return null;
+}
+
+// Mappa a tutta altezza dietro l'header; i controlli in alto (--bv-sat) scendono sotto di lui.
+// Ripiego se non si riesce a stare sotto l'header: la mappa parte subito sotto la testata.
 function allineaSottoTestata() {
     const root = document.getElementById('modal-bateolive-main');
     if (!root || !bvContainer) return;
     const top = bvContainer === document.body ? 0 : Math.max(0, Math.round(bvContainer.getBoundingClientRect().top));
     if (top === bvTopUltimo) return;
     bvTopUltimo = top;
-    root.style.setProperty('--bv-top', top + 'px');
+    const z = top > 0 ? zDellHeader(root, Math.round(top / 2)) : null;
+    if (top > 0 && z !== null && z > 1) {
+        root.style.setProperty('--bv-top', '0px');
+        root.style.setProperty('--bv-sat', top + 'px');
+        root.style.setProperty('--bv-z', String(z - 1));
+    } else {
+        root.style.setProperty('--bv-top', top + 'px');
+        root.style.setProperty('--bv-sat', '0px');
+        root.style.setProperty('--bv-z', '900');
+    }
     if (map) map.invalidateSize();
 }
 
