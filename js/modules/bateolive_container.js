@@ -1,7 +1,7 @@
 // ==========================================
 // BATEOLIVE - MODULO PER IL CONTAINER (versione per pubblico esterno)
 // Si apre dal container app (export init(container)): occupa l'area sotto la testata del container, che resta visibile
-// con il suo tasto indietro. Niente login e niente navigatore di turno:
+// con il suo tasto indietro (l'interfaccia sta sul body, il container tiene solo un segnaposto). Niente login e niente navigatore di turno:
 // mappa live, rewind, ricerca, filtri e GPS con velocità/bussola. Il nome della propria unità
 // si imposta dal tasto "unità" e resta salvato su questo dispositivo.
 // Grafica: tema chiaro/scuro (segue il sistema, o il tasto sole/luna), tasto freccia per i pulsanti, pannelli unità/fermate.
@@ -132,7 +132,7 @@ async function loadMapDependencies() {
 // ==========================================
 // INIEZIONE UI Mappa Completa
 // ==========================================
-function initUIBateoLive(container) {
+function initUIBateoLive() {
     if (document.getElementById('modal-bateolive-main')) return;
 
     const uiHTML = `
@@ -597,7 +597,7 @@ function initUIBateoLive(container) {
         </div>
     </div>
     `;
-    (container || document.body).insertAdjacentHTML('beforeend', uiHTML);
+    document.body.insertAdjacentHTML('beforeend', uiHTML);
 
     // Inizializzazione Tape Bussola
     const tape = document.getElementById('bv-compass-tape');
@@ -743,6 +743,7 @@ function leggiNomeUnitaSalvato() {
 
 // Smonta tutto (mappa, timer, GPS, rewind e interfaccia): serve se il container ha sostituito il suo contenuto
 function smontaBateoLive() {
+    fermaGuardia();
     if (fetchInterval) { clearInterval(fetchInterval); fetchInterval = null; }
     if (watchId) { try { navigator.geolocation.clearWatch(watchId); } catch (e) {} watchId = null; }
     fermaOsservatoreHud();
@@ -754,56 +755,83 @@ function smontaBateoLive() {
     map = null; oms = null; userMarker = null;
     boatMarkers = {}; otherUsersMarkers = {};
     activeSelection = null; followUser = false; courseUp = false;
-    document.querySelectorAll('#modal-bateolive-main, style[data-bv]').forEach(el => el.remove());
+    document.querySelectorAll('#modal-bateolive-main, style[data-bv], #bv-sentinella').forEach(el => el.remove());
+    bvSentinella = null; bvTopUltimo = null;
 }
 
-// Il container non ha un evento di uscita: se il suo contenuto sparisce o viene nascosto,
-// BateoLive si ferma da solo (GPS, timer, aggiornamenti) al primo controllo.
+// L'interfaccia sta sul body (un antenato del container con transform/overflow la schiaccerebbe a altezza 0);
+// nel container resta solo un segnaposto. Il container non ha un evento di uscita: se il segnaposto sparisce
+// (contenuto sostituito) o il container viene nascosto, BateoLive si ferma da solo (GPS, timer, aggiornamenti).
+let bvContainer = null, bvSentinella = null, bvGuardia = null, bvFuoriVistaN = 0, bvTopUltimo = null;
+let bvResizeAgganciato = false;
+
 function bateoliveFuoriVista() {
-    const root = document.getElementById('modal-bateolive-main');
-    return !root || !root.parentElement || root.parentElement.getClientRects().length === 0;
+    return !bvContainer || !bvSentinella || !bvSentinella.isConnected || bvContainer.getClientRects().length === 0;
 }
 
 function avviaCicloAggiornamento() {
     if (fetchInterval) return;
     fetchInterval = setInterval(() => {
-        if (bateoliveFuoriVista()) {
-            if (document.getElementById('modal-bateolive-main')) chiudiBateoLive();
-            else smontaBateoLive();
-            return;
-        }
         fetchAndUpdateBoats();
         sincronizzaPosizioneAltriUtenti();
     }, 1500);
 }
 
 // L'area della mappa parte subito sotto la testata del container (così il suo tasto indietro resta usabile)
-let bvResizeAgganciato = false;
 function allineaSottoTestata() {
     const root = document.getElementById('modal-bateolive-main');
-    const c = root && root.parentElement;
-    if (!c) return;
-    const top = c === document.body ? 0 : Math.max(0, Math.round(c.getBoundingClientRect().top));
+    if (!root || !bvContainer) return;
+    const top = bvContainer === document.body ? 0 : Math.max(0, Math.round(bvContainer.getBoundingClientRect().top));
+    if (top === bvTopUltimo) return;
+    bvTopUltimo = top;
     root.style.setProperty('--bv-top', top + 'px');
     if (map) map.invalidateSize();
 }
-// Punto d'ingresso per il container: init(container) monta l'interfaccia dentro il container e avvia la mappa
+
+function controllaPresenza() {
+    if (!bateoliveFuoriVista()) { bvFuoriVistaN = 0; allineaSottoTestata(); return; }
+    if (++bvFuoriVistaN < 3) return;       // tolleranza: il container può essere nascosto per un attimo all'apertura
+    fermaGuardia();
+    if (bvSentinella && bvSentinella.isConnected) chiudiBateoLive(); else smontaBateoLive();
+}
+
+function avviaGuardia() {
+    bvFuoriVistaN = 0;
+    if (!bvGuardia) bvGuardia = setInterval(controllaPresenza, 300);
+}
+
+function fermaGuardia() {
+    if (bvGuardia) { clearInterval(bvGuardia); bvGuardia = null; }
+}
+
+// Punto d'ingresso per il container: init(container) monta l'interfaccia e avvia la mappa
 export async function init(container) {
     tracciaApertura('/bateolive_container', 'BateoLive (container)');
+
+    container = container || document.body;
 
     // contenuto del container sostituito dall'ultima apertura: la vecchia mappa non serve più
     const esistente = document.getElementById('modal-bateolive-main');
     const mappaOrfana = map && !document.body.contains(map.getContainer());
-    const inAltroContenitore = esistente && container && !container.contains(esistente);
-    if (mappaOrfana || inAltroContenitore) smontaBateoLive();
+    const contenitoreCambiato = esistente && (bvContainer !== container || !bvSentinella || !bvSentinella.isConnected);
+    if (mappaOrfana || contenitoreCambiato) smontaBateoLive();
+
+    bvContainer = container;
+    if (!bvSentinella || !bvSentinella.isConnected) {
+        bvSentinella = document.createElement('div');
+        bvSentinella.id = 'bv-sentinella';
+        container.appendChild(bvSentinella);
+    }
 
     currentUserId = recuperaIdUtente();
     customUnitName = leggiNomeUnitaSalvato();
 
-    initUIBateoLive(container);
+    initUIBateoLive();
     document.getElementById('modal-bateolive-main').style.display = 'flex';
+    bvTopUltimo = null;
     allineaSottoTestata();
     if (!bvResizeAgganciato) { window.addEventListener('resize', allineaSottoTestata); bvResizeAgganciato = true; }
+    avviaGuardia();
     avviaOsservatoreTema();
     avviaOsservatoreHud();
 
@@ -1329,6 +1357,7 @@ function tastoIndietroBateoLive() {
 }
 
 function chiudiBateoLive() {
+    fermaGuardia();
     if (rewind.attivo) chiudiRewind();
     document.getElementById('modal-bateolive-main').style.display = 'none';
     closeBateoLiveDrawer();
