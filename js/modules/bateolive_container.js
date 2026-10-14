@@ -777,32 +777,47 @@ function avviaCicloAggiornamento() {
     }, 1500);
 }
 
-// Livello (z-index) dell'header del container: la mappa gli sta subito sotto, così arriva fino in cima e l'header resta sopra.
-// Si guarda cosa c'è in cima allo schermo (escluso BateoLive) e si risale fino al suo livello più esterno che crea uno
-// stacking context: conta quello (non gli z-index degli elementi interni all'header). Senza z-index numerico → null.
-function zDellHeader(root, y) {
+// Livello (z-index) di un elemento rispetto al body: si risale fino al suo livello più esterno che crea uno
+// stacking context e conta quello (non gli z-index interni). Senza z-index numerico → null.
+function livelloEsterno(el) {
+    let ctx = null;
+    for (let n = el; n && n !== document.body && n !== document.documentElement; n = n.parentElement) {
+        const cs = getComputedStyle(n);
+        const posizionato = cs.position !== 'static';
+        const creaContesto = (posizionato && cs.zIndex !== 'auto') || cs.position === 'fixed' || cs.position === 'sticky'
+            || cs.transform !== 'none' || parseFloat(cs.opacity) < 1 || cs.filter !== 'none'
+            || (cs.backdropFilter && cs.backdropFilter !== 'none') || /transform|opacity|filter/.test(cs.willChange || '');
+        if (creaContesto) ctx = { z: (posizionato && cs.zIndex !== 'auto') ? parseInt(cs.zIndex, 10) : null };
+    }
+    return ctx && ctx.z !== null ? ctx.z : null;
+}
+
+// Punto dell'header: il tasto indietro del container (#btn-back) se visibile, altrimenti il centro sopra l'area modulo
+function puntoHeader(top) {
+    const ref = document.getElementById('btn-back');
+    if (ref && ref.getClientRects().length) {
+        const r = ref.getBoundingClientRect();
+        return { ref, x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) };
+    }
+    return { ref: null, x: Math.round(window.innerWidth / 2), y: Math.max(1, Math.round(top / 2)) };
+}
+
+// Livello dell'header: dal suo tasto indietro, oppure da ciò che c'è in cima allo schermo (escluso BateoLive)
+function zDellHeader(root, pt) {
     try {
-        for (const el of document.elementsFromPoint(Math.round(window.innerWidth / 2), Math.max(1, y))) {
+        if (pt.ref) return livelloEsterno(pt.ref);
+        for (const el of document.elementsFromPoint(pt.x, pt.y)) {
             if (root.contains(el) || el === document.documentElement || el === document.body) continue;
-            let ctx = null;
-            for (let n = el; n && n !== document.body && n !== document.documentElement; n = n.parentElement) {
-                const cs = getComputedStyle(n);
-                const posizionato = cs.position !== 'static';
-                const creaContesto = (posizionato && cs.zIndex !== 'auto') || cs.position === 'fixed' || cs.position === 'sticky'
-                    || cs.transform !== 'none' || parseFloat(cs.opacity) < 1 || cs.filter !== 'none'
-                    || (cs.backdropFilter && cs.backdropFilter !== 'none') || /transform|opacity|filter/.test(cs.willChange || '');
-                if (creaContesto) ctx = { n, cs, z: (posizionato && cs.zIndex !== 'auto') ? parseInt(cs.zIndex, 10) : null };
-            }
-            return ctx && ctx.z !== null ? ctx.z : null;
+            return livelloEsterno(el);
         }
     } catch (e) { /* si usa il ripiego */ }
     return null;
 }
 
-// true se BateoLive sta coprendo l'header (il punto sotto l'header cade dentro la mappa)
-function headerCoperto(root, y) {
+// true se BateoLive sta coprendo l'header (il punto dell'header cade dentro la mappa)
+function headerCoperto(root, pt) {
     try {
-        const primo = document.elementsFromPoint(Math.round(window.innerWidth / 2), Math.max(1, y))[0];
+        const primo = document.elementsFromPoint(pt.x, pt.y)[0];
         return !!primo && root.contains(primo);
     } catch (e) { return false; }
 }
@@ -827,17 +842,23 @@ function allineaSottoTestata() {
     const root = document.getElementById('modal-bateolive-main');
     if (!root || !bvContainer) return;
     const top = bvContainer === document.body ? 0 : Math.max(0, Math.round(bvContainer.getBoundingClientRect().top));
-    const y = Math.round(top / 2);
+    const pt = puntoHeader(top);
     if (top === bvTopUltimo) {
         // sicurezza: se a mappa a tutta altezza l'header risulta coperto, si torna subito sotto la testata
-        if (bvModoPieno && headerCoperto(root, y)) { applicaModoMappa(root, top, false, null); if (map) map.invalidateSize(); }
+        if (bvModoPieno && headerCoperto(root, pt)) { applicaModoMappa(root, top, false, null); if (map) map.invalidateSize(); }
         return;
     }
     bvTopUltimo = top;
-    const z = top > 0 ? zDellHeader(root, y) : null;
+    const z = top > 0 ? zDellHeader(root, pt) : null;
     applicaModoMappa(root, top, top > 0 && z !== null && z > 1, z);
-    if (bvModoPieno && headerCoperto(root, y)) applicaModoMappa(root, top, false, null);
+    if (bvModoPieno && headerCoperto(root, pt)) applicaModoMappa(root, top, false, null);
     if (map) map.invalidateSize();
+}
+
+// Tasto indietro del container: la mappa si chiude subito (il container svuota il suo contenuto solo dopo 300 ms)
+function allaPressioneIndietroContainer() {
+    const root = document.getElementById('modal-bateolive-main');
+    if (root && root.style.display !== 'none') chiudiBateoLive();
 }
 
 function controllaPresenza() {
@@ -881,6 +902,11 @@ export async function init(container) {
     initUIBateoLive();
     document.getElementById('modal-bateolive-main').style.display = 'flex';
     bvTopUltimo = null;
+    const tastoIndietro = document.getElementById('btn-back');
+    if (tastoIndietro && !tastoIndietro.dataset.bvAgganciato) {
+        tastoIndietro.addEventListener('click', allaPressioneIndietroContainer, true);
+        tastoIndietro.dataset.bvAgganciato = '1';
+    }
     allineaSottoTestata();
     if (!bvResizeAgganciato) { window.addEventListener('resize', allineaSottoTestata); bvResizeAgganciato = true; }
     avviaGuardia();
