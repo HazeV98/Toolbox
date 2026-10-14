@@ -2,8 +2,8 @@
     {
         "id": "app_1788052036138",
         "name": "BateoLive",
-        "type": "link",
-        "target": "https://bateolive.stream",
+        "type": "module",
+        "target": "bateolive_container",
         "iconType": "custom",
         "iconValue": "assets/icons/icon_1788052032042.png"
     },
