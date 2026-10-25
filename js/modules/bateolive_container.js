@@ -10,7 +10,7 @@
 // Escape HTML per i testi che finiscono nell'interfaccia
 const esc = (v) => String(v == null ? '' : v).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
-const API_URL = 'https://api.bateolive.stream';
+const API_URL = 'https://utilitybe.homeserver.foo';
 let globalBoats = [];
 // Posizioni simulate dall'orario (corse non rilevate dal GPS): disattivate di base, la scelta resta salvata
 let bvMostraSimulate = (() => { try { return localStorage.getItem('bv_mostra_simulate') === '1'; } catch (e) { return false; } })();
