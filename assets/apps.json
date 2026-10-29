@@ -1,13 +1,5 @@
 [
     {
-        "id": "app_1788052036138",
-        "name": "BateoLive",
-        "type": "module",
-        "target": "bateolive_container",
-        "iconType": "custom",
-        "iconValue": "assets/icons/icon_1788052032042.png"
-    },
-    {
         "id": "app_1788052311438",
         "name": "Strumenti",
         "type": "module",
